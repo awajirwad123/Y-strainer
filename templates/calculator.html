@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Y Stainer Pressure Drop Calculator</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="/static/style.css" rel="stylesheet">
+</head>
+<body>
+
+<!-- ── Navbar ──────────────────────────────────────────────────────────────── -->
+<nav class="app-navbar d-flex align-items-center justify-content-between">
+  <div>
+    <div class="brand-title">⚙ Y STAINER — Pressure Drop Calculator</div>
+    <div class="brand-sub">Forbes Marshall Method &nbsp;|&nbsp; CGS Unit System</div>
+  </div>
+  <div class="d-flex align-items-center gap-3">
+    <span class="text-white" style="font-size:.82rem;">👤 {{ username }}</span>
+    <a href="/logout" class="btn btn-outline-light btn-sm" style="font-size:.78rem;">Logout</a>
+  </div>
+</nav>
+
+<div class="container-fluid px-3 py-2">
+
+  <!-- ── Metadata row ──────────────────────────────────────────────────────── -->
+  <div class="calc-card px-3 py-2 mb-2">
+    <div class="row g-2">
+      <div class="col-md-3 col-sm-6">
+        <div class="form-label-sm">Tag No.</div>
+        <input id="tag_no" type="text" class="form-control form-control-sm" placeholder="ND031-PZSY-0303">
+      </div>
+      <div class="col-md-3 col-sm-6">
+        <div class="form-label-sm">Fluid Name</div>
+        <input id="fluid_name" type="text" class="form-control form-control-sm" placeholder="LOW PRESSURE STEAM">
+      </div>
+      <div class="col-md-3 col-sm-6">
+        <div class="form-label-sm">Company / Name</div>
+        <input id="company_name" type="text" class="form-control form-control-sm" placeholder="RELIANCE INDUSTRIES LTD">
+      </div>
+      <div class="col-md-3 col-sm-6">
+        <div class="form-label-sm">Project No.</div>
+        <input id="project_no" type="text" class="form-control form-control-sm" placeholder="WSM2511115">
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Main input area ───────────────────────────────────────────────────── -->
+  <div class="row g-2 mb-2">
+
+    <!-- LEFT PANEL — Fluid properties + Strainer ──────────────────────────── -->
+    <div class="col-xl-6 col-lg-6">
+      <div class="calc-card h-100">
+        <div class="section-header">Input Parameters</div>
+        <div class="px-3 py-2">
+
+          <!-- Fluid properties -->
+          <div class="row g-2 mb-2">
+            <div class="col-4">
+              <div class="form-label-sm">Density (gm/cm³)</div>
+              <input id="rho" type="number" class="form-control form-control-sm"
+                     step="0.0001" placeholder="0.951" min="0">
+            </div>
+            <div class="col-4">
+              <div class="form-label-sm">Viscosity (cP)</div>
+              <input id="mu_cP" type="number" class="form-control form-control-sm"
+                     step="0.0001" placeholder="0.248" min="0">
+            </div>
+            <div class="col-4">
+              <div class="form-label-sm">Flow</div>
+              <div class="input-group input-group-sm">
+                <input id="flow_W" type="number" class="form-control form-control-sm"
+                       step="0.001" placeholder="165" min="0">
+                <select id="flow_unit" class="form-select form-select-sm" style="max-width:80px">
+                  <option value="kg/hr">kg/hr</option>
+                  <option value="m3/hr">m³/hr</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Type of Strainer -->
+          <div class="mb-2">
+            <div class="form-label-sm mb-1">Type of Strainer</div>
+            <div class="d-flex flex-wrap gap-2 strainer-type-group">
+              <div class="form-check form-check-inline mb-0">
+                <input class="form-check-input" type="radio" name="strainer_type"
+                       id="type_y" value="Y-Type" checked>
+                <label class="form-check-label" for="type_y">Y-Type</label>
+              </div>
+              <div class="form-check form-check-inline mb-0">
+                <input class="form-check-input" type="radio" name="strainer_type"
+                       id="type_basket" value="Basket">
+                <label class="form-check-label" for="type_basket">Basket</label>
+              </div>
+              <div class="form-check form-check-inline mb-0">
+                <input class="form-check-input" type="radio" name="strainer_type"
+                       id="type_t" value="T-Type">
+                <label class="form-check-label" for="type_t">T-Type</label>
+              </div>
+              <div class="form-check form-check-inline mb-0">
+                <input class="form-check-input" type="radio" name="strainer_type"
+                       id="type_conical" value="Conical">
+                <label class="form-check-label" for="type_conical">Conical</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Strainer model selection -->
+          <div class="row g-2 mb-2">
+            <div class="col-7">
+              <div class="form-label-sm">Y-Type Model</div>
+              <select id="model_select" class="form-select form-select-sm">
+                <option value="">— Select Model —</option>
+              </select>
+            </div>
+            <div class="col-5">
+              <div class="form-label-sm">Size (NPS)</div>
+              <select id="nps_select" class="form-select form-select-sm">
+                <option value="">— NPS —</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Screen dimensions -->
+          <div class="row g-2 mb-2">
+            <div class="col-6">
+              <div class="form-label-sm">Length of Screen (cm)</div>
+              <input id="L_cm" type="number" class="form-control form-control-sm"
+                     step="0.001" placeholder="8.0" min="0">
+            </div>
+            <div class="col-6">
+              <div class="form-label-sm">Diameter of Screen (cm)</div>
+              <input id="D_screen_cm" type="number" class="form-control form-control-sm"
+                     step="0.001" placeholder="2.6" min="0">
+            </div>
+          </div>
+
+          <!-- Computed surface areas -->
+          <div class="row g-2">
+            <div class="col-6">
+              <div class="form-label-sm">Surface Area @ 100% clean (cm²)</div>
+              <input id="disp_A100" type="text" class="form-control form-control-sm computed" readonly>
+            </div>
+            <div class="col-6">
+              <div class="form-label-sm">Surface Area @ 50% clogged (cm²)</div>
+              <input id="disp_A50" type="text" class="form-control form-control-sm computed" readonly>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL — Pipe + Mesh + Perf ──────────────────────────────────── -->
+    <div class="col-xl-6 col-lg-6">
+      <div class="calc-card h-100">
+        <div class="section-header">Screen &amp; Pipe Selection</div>
+        <div class="px-3 py-2">
+
+          <!-- Pipe dimensions -->
+          <div class="row g-2 mb-2">
+            <div class="col-4">
+              <div class="form-label-sm">Pipe ID (cm)</div>
+              <input id="D_pipe_cm" type="number" class="form-control form-control-sm"
+                     step="0.001" placeholder="2.5" min="0">
+            </div>
+            <div class="col-4">
+              <div class="form-label-sm">Cross-Section Area (cm²)</div>
+              <input id="disp_A_pipe" type="text" class="form-control form-control-sm computed" readonly>
+            </div>
+            <div class="col-4">
+              <div class="form-label-sm">α (alpha)</div>
+              <input id="disp_alpha" type="text" class="form-control form-control-sm computed" readonly>
+            </div>
+          </div>
+
+          <!-- Mesh selection -->
+          <div class="row g-2 mb-2">
+            <div class="col-8">
+              <div class="form-label-sm">Mesh Size</div>
+              <select id="mesh_select" class="form-select form-select-sm">
+                <option value="">— Select Mesh —</option>
+                <option value="NO_MESH">No Mesh (Q = 100%)</option>
+              </select>
+            </div>
+            <div class="col-4">
+              <div class="form-label-sm">% Opening Q</div>
+              <input id="Q_pct" type="number" class="form-control form-control-sm"
+                     step="0.01" min="0" max="100">
+            </div>
+          </div>
+
+          <!-- Perforation selection -->
+          <div class="row g-2 mb-2">
+            <div class="col-8">
+              <div class="form-label-sm">Perforation</div>
+              <select id="perf_select" class="form-select form-select-sm">
+                <option value="">— Select Perforation —</option>
+              </select>
+            </div>
+            <div class="col-4">
+              <div class="form-label-sm">% Opening P</div>
+              <input id="P_pct" type="number" class="form-control form-control-sm"
+                     step="0.01" min="0" max="100">
+            </div>
+          </div>
+
+          <!-- Opening width -->
+          <div class="row g-2 mb-3">
+            <div class="col-4">
+              <div class="form-label-sm">Opening Width D (cm)</div>
+              <input id="D_open_cm" type="number" class="form-control form-control-sm"
+                     step="0.00001" placeholder="0.05" min="0">
+            </div>
+            <div class="col-8 d-flex align-items-end">
+              <div id="error-banner" class="w-100">⚠ <span id="error-msg"></span></div>
+            </div>
+          </div>
+
+          <!-- Calculate button -->
+          <div class="d-grid">
+            <button id="btn-calc" class="btn">⚡ &nbsp;RESULT</button>
+          </div>
+
+          <!-- Clear button -->
+          <div class="d-grid mt-2">
+            <button id="btn-clear" class="btn btn-outline-secondary btn-sm">Clear All</button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div><!-- end main inputs row -->
+
+  <!-- ── Summary band ───────────────────────────────────────────────────────── -->
+  <div id="summary-band" class="mb-2" style="display:none">
+    <span class="sum-item"><span class="sum-label">Q: </span><span class="sum-label" id="sum_Q"></span></span>
+    <span class="sum-item"><span class="sum-label">P: </span><span class="sum-val" id="sum_P"></span></span>
+    <span class="sum-item"><span class="sum-label">D: </span><span class="sum-val" id="sum_D"></span> cm</span>
+    <span class="sum-item"><span class="sum-label">α: </span><span class="sum-val" id="sum_alpha"></span></span>
+    <span class="sum-item"><span class="sum-label">ρ: </span><span class="sum-val" id="sum_rho"></span> gm/cm³</span>
+    <span class="sum-item"><span class="sum-label">μ: </span><span class="sum-val" id="sum_mu"></span> gm/cm·s</span>
+    <span class="sum-item"><span class="sum-label">Flow: </span><span class="sum-val" id="sum_flow"></span> cm³/sec</span>
+  </div>
+
+  <!-- ── Results section ────────────────────────────────────────────────────── -->
+  <div id="results-section" style="display:none">
+    <div class="row g-2">
+
+      <!-- 50% Clogged -->
+      <div class="col-md-6">
+        <div class="result-panel clogged">
+          <div class="section-header red">Net Surface Area of Screen @ 50% Clogged Condition</div>
+          <div class="p-0">
+            <table class="result-table">
+              <tr><td>Surface area of screen</td><td id="r50_surf">—</td><td>cm²</td></tr>
+              <tr><td>Net Surface area of screen</td><td id="r50_net">—</td><td>cm²</td></tr>
+              <tr><td>Screening Area Ratio</td><td id="r50_ratio">—</td><td></td></tr>
+              <tr><td>V</td><td id="r50_V">—</td><td>cm/sec</td></tr>
+              <tr><td>Re</td><td id="r50_Re">—</td><td></td></tr>
+              <tr class="c-row"><td>C</td><td id="r50_C">—</td><td></td></tr>
+              <tr><td>K</td><td id="r50_K">—</td><td></td></tr>
+              <tr class="dp-row"><td>ΔP</td><td id="r50_dP_cm">—</td><td>cm WC</td></tr>
+              <tr class="dp-row"><td>ΔP</td><td id="r50_dP_in">—</td><td>inches of water</td></tr>
+              <tr class="dp-row"><td>ΔP</td><td id="r50_dP_kg">—</td><td>kg/cm² (g)</td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 100% Clean -->
+      <div class="col-md-6">
+        <div class="result-panel clean">
+          <div class="section-header green">Net Surface Area of Screen @ 100% Clean Condition</div>
+          <div class="p-0">
+            <table class="result-table">
+              <tr><td>Surface area of screen</td><td id="r100_surf">—</td><td>cm²</td></tr>
+              <tr><td>Net Surface area of screen</td><td id="r100_net">—</td><td>cm²</td></tr>
+              <tr><td>Screening Area Ratio</td><td id="r100_ratio">—</td><td></td></tr>
+              <tr><td>V</td><td id="r100_V">—</td><td>cm/sec</td></tr>
+              <tr><td>Re</td><td id="r100_Re">—</td><td></td></tr>
+              <tr class="c-row"><td>C</td><td id="r100_C">—</td><td></td></tr>
+              <tr><td>K</td><td id="r100_K">—</td><td></td></tr>
+              <tr class="dp-row"><td>ΔP</td><td id="r100_dP_cm">—</td><td>cm WC</td></tr>
+              <tr class="dp-row"><td>ΔP</td><td id="r100_dP_in">—</td><td>inches of water</td></tr>
+              <tr class="dp-row"><td>ΔP</td><td id="r100_dP_kg">—</td><td>kg/cm² (g)</td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div><!-- end results section -->
+
+</div><!-- container -->
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// ── Helpers ──────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const fmt = (v, d = 6) => (v !== null && v !== undefined) ? Number(v).toPrecision(7).replace(/\.?0+$/, '') : '—';
+const fmtFixed = (v, d) => (v !== null && v !== undefined) ? Number(v).toFixed(d) : '—';
+
+// ── State ────────────────────────────────────────────────────────────────────
+let strainerData = [];
+let meshData = [];
+let perfData = [];
+
+// ── Load lookup data on page load ────────────────────────────────────────────
+async function loadLookups() {
+  try {
+    [strainerData, meshData, perfData] = await Promise.all([
+      fetch('/lookup/strainer-models').then(r => r.json()),
+      fetch('/lookup/meshes').then(r => r.json()),
+      fetch('/lookup/perforations').then(r => r.json()),
+    ]);
+    populateModels();
+    populateMesh();
+    populatePerf();
+  } catch(e) {
+    showError('Failed to load dropdowns: ' + e.message);
+  }
+}
+
+// ── Populate strainer model dropdown ─────────────────────────────────────────
+function populateModels() {
+  const models = [...new Set(strainerData.map(s => s.model))].sort();
+  const sel = $('model_select');
+  models.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m; opt.textContent = m;
+    sel.appendChild(opt);
+  });
+}
+
+// ── On model change → populate NPS ───────────────────────────────────────────
+$('model_select').addEventListener('change', () => {
+  const model = $('model_select').value;
+  const npsSel = $('nps_select');
+  npsSel.innerHTML = '<option value="">— NPS —</option>';
+  if (!model) return;
+  const entries = strainerData.filter(s => s.model === model);
+  entries.forEach(e => {
+    const opt = document.createElement('option');
+    opt.value = e.nps; opt.textContent = 'NPS ' + e.nps;
+    npsSel.appendChild(opt);
+  });
+});
+
+// ── On NPS change → auto-fill screen dimensions ───────────────────────────────
+$('nps_select').addEventListener('change', () => {
+  const model = $('model_select').value;
+  const nps   = $('nps_select').value;
+  if (!model || !nps) return;
+  const entry = strainerData.find(s => s.model === model && s.nps === nps);
+  if (entry) {
+    $('D_screen_cm').value = (entry.screen_D_mm / 10).toFixed(3);
+    $('L_cm').value        = (entry.screen_L_mm / 10).toFixed(3);
+    updateSurfaceAreas();
+  }
+});
+
+// ── Populate mesh dropdown ────────────────────────────────────────────────────
+function populateMesh() {
+  const sel = $('mesh_select');
+  meshData.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = JSON.stringify({ mesh: m.mesh, swg: m.swg, opening_mm: m.opening_mm, Q: m.open_area_pct });
+    opt.textContent = `${m.mesh} Mesh × ${m.swg} swg   (${m.open_area_pct}% / ${m.opening_mm}mm)`;
+    sel.appendChild(opt);
+  });
+}
+
+// ── On mesh change → auto-fill Q and D ───────────────────────────────────────
+$('mesh_select').addEventListener('change', () => {
+  const val = $('mesh_select').value;
+  if (val === 'NO_MESH') {
+    $('Q_pct').value = '100';
+    $('D_open_cm').value = '';
+  } else if (val) {
+    const m = JSON.parse(val);
+    $('Q_pct').value     = m.Q.toFixed(2);
+    $('D_open_cm').value = (m.opening_mm / 10).toFixed(5);
+  } else {
+    $('Q_pct').value = '';
+    $('D_open_cm').value = '';
+  }
+  updateAlpha();
+});
+
+// ── Populate perforation dropdown ─────────────────────────────────────────────
+function populatePerf() {
+  const sel = $('perf_select');
+  perfData.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = JSON.stringify({ desc: p.description, P: p.open_area_pct });
+    opt.textContent = `${p.description}  (${p.open_area_pct}%)`;
+    sel.appendChild(opt);
+  });
+}
+
+// ── On perf change → auto-fill P ─────────────────────────────────────────────
+$('perf_select').addEventListener('change', () => {
+  const val = $('perf_select').value;
+  if (val) {
+    const p = JSON.parse(val);
+    $('P_pct').value = p.P.toFixed(2);
+  } else {
+    $('P_pct').value = '';
+  }
+  updateAlpha();
+});
+
+// ── Live computed fields ──────────────────────────────────────────────────────
+function updateSurfaceAreas() {
+  const D = parseFloat($('D_screen_cm').value);
+  const L = parseFloat($('L_cm').value);
+  if (!isNaN(D) && !isNaN(L) && D > 0 && L > 0) {
+    const A100 = Math.PI * D * L;
+    $('disp_A100').value = A100.toFixed(7);
+    $('disp_A50').value  = (A100 / 2).toFixed(7);
+  } else {
+    $('disp_A100').value = '';
+    $('disp_A50').value  = '';
+  }
+}
+
+function updatePipeArea() {
+  const D = parseFloat($('D_pipe_cm').value);
+  if (!isNaN(D) && D > 0) {
+    $('disp_A_pipe').value = (Math.PI / 4 * D * D).toFixed(6);
+  } else {
+    $('disp_A_pipe').value = '';
+  }
+}
+
+function updateAlpha() {
+  const Q = parseFloat($('Q_pct').value);
+  const P = parseFloat($('P_pct').value);
+  if (!isNaN(Q) && !isNaN(P) && Q > 0 && P > 0) {
+    $('disp_alpha').value = ((Q / 100) * (P / 100)).toFixed(6);
+  } else {
+    $('disp_alpha').value = '';
+  }
+}
+
+// Attach live update listeners
+['D_screen_cm', 'L_cm'].forEach(id => $( id ).addEventListener('input', updateSurfaceAreas));
+$('D_pipe_cm').addEventListener('input', updatePipeArea);
+['Q_pct', 'P_pct'].forEach(id => $(id).addEventListener('input', updateAlpha));
+
+// ── Error helpers ─────────────────────────────────────────────────────────────
+function showError(msg) {
+  $('error-msg').textContent = msg;
+  $('error-banner').style.display = 'block';
+}
+function hideError() {
+  $('error-banner').style.display = 'none';
+}
+
+// ── Calculate ─────────────────────────────────────────────────────────────────
+$('btn-calc').addEventListener('click', async () => {
+  hideError();
+
+  const rho    = parseFloat($('rho').value);
+  const mu_cP  = parseFloat($('mu_cP').value);
+  const W      = parseFloat($('flow_W').value);
+  const flow_unit = $('flow_unit').value;
+  const D_pipe_cm  = parseFloat($('D_pipe_cm').value);
+  const D_screen_cm = parseFloat($('D_screen_cm').value);
+  const L_cm   = parseFloat($('L_cm').value);
+  const D_open_cm = parseFloat($('D_open_cm').value);
+  const Q_pct  = parseFloat($('Q_pct').value);
+  const P_pct  = parseFloat($('P_pct').value);
+
+  const missing = [];
+  if (isNaN(rho))         missing.push('Density');
+  if (isNaN(mu_cP))       missing.push('Viscosity');
+  if (isNaN(W))           missing.push('Flow');
+  if (isNaN(D_pipe_cm))   missing.push('Pipe ID');
+  if (isNaN(D_screen_cm)) missing.push('Screen Diameter');
+  if (isNaN(L_cm))        missing.push('Screen Length');
+  if (isNaN(D_open_cm))   missing.push('Opening Width D');
+  if (isNaN(Q_pct))       missing.push('Q%');
+  if (isNaN(P_pct))       missing.push('P%');
+
+  if (missing.length) {
+    showError('Missing inputs: ' + missing.join(', '));
+    return;
+  }
+
+  const payload = {
+    rho, mu_cP, W, flow_unit,
+    D_pipe_cm, D_screen_cm, L_cm, D_open_cm, Q_pct, P_pct,
+    tag_no:     $('tag_no').value     || null,
+    fluid_name: $('fluid_name').value || null,
+    project:    $('project_no').value || null,
+  };
+
+  try {
+    const resp = await fetch('/calculate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json();
+      showError(err.detail || 'Calculation error.');
+      return;
+    }
+
+    const data = await resp.json();
+    displayResults(data, Q_pct, P_pct, D_open_cm, mu_cP);
+
+  } catch(e) {
+    showError('Network error: ' + e.message);
+  }
+});
+
+// ── Display results ────────────────────────────────────────────────────────────
+function displayResults(data, Q_pct, P_pct, D_open_cm, mu_cP) {
+  const c50  = data.clogged_50pct;
+  const c100 = data.clean_100pct;
+
+  // Summary band
+  $('sum_Q').textContent     = Q_pct;
+  $('sum_P').textContent     = P_pct;
+  $('sum_D').textContent     = D_open_cm;
+  $('sum_alpha').textContent = data.alpha.toFixed(5);
+  $('sum_rho').textContent   = $('rho').value;
+  $('sum_mu').textContent    = (mu_cP * 0.01).toFixed(5);
+  $('sum_flow').textContent  = data.Q_vol_cm3_s.toFixed(7);
+
+  // 50% clogged
+  $('r50_surf').textContent  = c50.surface_area_cm2.toFixed(7);
+  $('r50_net').textContent   = c50.net_surface_area_cm2.toFixed(9);
+  $('r50_ratio').textContent = c50.screening_area_ratio.toFixed(7);
+  $('r50_V').textContent     = c50.V_cm_s.toFixed(7);
+  $('r50_Re').textContent    = c50.Re.toFixed(5);
+  $('r50_C').textContent     = c50.C;
+  $('r50_K').textContent     = c50.K.toFixed(5);
+  $('r50_dP_cm').textContent = c50.delta_P_cm_wc.toFixed(5);
+  $('r50_dP_in').textContent = c50.delta_P_in_wc.toFixed(4);
+  $('r50_dP_kg').textContent = c50.delta_P_kg_cm2.toExponential(2);
+
+  // 100% clean
+  $('r100_surf').textContent  = c100.surface_area_cm2.toFixed(7);
+  $('r100_net').textContent   = c100.net_surface_area_cm2.toFixed(9);
+  $('r100_ratio').textContent = c100.screening_area_ratio.toFixed(7);
+  $('r100_V').textContent     = c100.V_cm_s.toFixed(7);
+  $('r100_Re').textContent    = c100.Re.toFixed(5);
+  $('r100_C').textContent     = c100.C;
+  $('r100_K').textContent     = c100.K.toFixed(5);
+  $('r100_dP_cm').textContent = c100.delta_P_cm_wc.toFixed(5);
+  $('r100_dP_in').textContent = c100.delta_P_in_wc.toFixed(5);
+  $('r100_dP_kg').textContent = c100.delta_P_kg_cm2.toExponential(2);
+
+  $('summary-band').style.display   = 'block';
+  $('results-section').style.display = 'block';
+  $('results-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── Clear ─────────────────────────────────────────────────────────────────────
+$('btn-clear').addEventListener('click', () => {
+  ['tag_no','fluid_name','company_name','project_no',
+   'rho','mu_cP','flow_W',
+   'L_cm','D_screen_cm','D_pipe_cm','D_open_cm','Q_pct','P_pct',
+   'disp_A100','disp_A50','disp_A_pipe','disp_alpha'
+  ].forEach(id => $(id).value = '');
+  ['model_select','nps_select','mesh_select','perf_select'].forEach(id => $(id).selectedIndex = 0);
+  $('flow_unit').value = 'kg/hr';
+  $('summary-band').style.display    = 'none';
+  $('results-section').style.display = 'none';
+  hideError();
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadLookups();
+</script>
+</body>
+</html>
