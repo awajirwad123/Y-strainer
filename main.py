@@ -121,36 +121,12 @@ def login_post(
     )
 
 
-@app.get("/signup", response_class=HTMLResponse, include_in_schema=False)
-def signup_page(request: Request):
-    if _current_user(request):
-        return RedirectResponse("/", status_code=302)
-    return templates.TemplateResponse(
-        "signup.html", {"request": request, "error": None, "success": None}
-    )
-
-
-@app.post("/signup", response_class=HTMLResponse, include_in_schema=False)
-def signup_post(
-    request: Request,
-    username: str = Form(...),
-    email: str = Form(...),
-    password: str = Form(...),
-    confirm_password: str = Form(...),
-):
-    ctx = {"request": request, "error": None, "success": None}
-    if password != confirm_password:
-        ctx["error"] = "Passwords do not match."
-        return templates.TemplateResponse("signup.html", ctx)
-    if len(password) < 6:
-        ctx["error"] = "Password must be at least 6 characters."
-        return templates.TemplateResponse("signup.html", ctx)
-    ok, msg = create_user(username, email, password)
-    if ok:
-        ctx["success"] = "Account created successfully! You can now log in."
-        return templates.TemplateResponse("signup.html", ctx)
-    ctx["error"] = msg
-    return templates.TemplateResponse("signup.html", ctx)
+@app.get("/signup", include_in_schema=False)
+@app.post("/signup", include_in_schema=False)
+def signup_disabled(request: Request):
+    """Registration is closed — accounts are created by the administrator only."""
+    from fastapi import HTTPException
+    raise HTTPException(status_code=404, detail="Page not found")
 
 
 @app.get("/logout", include_in_schema=False)
