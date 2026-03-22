@@ -1,6 +1,6 @@
 # Y Stainer Pressure Drop Calculator
 
-> **Forbes Marshall Method · FastAPI · Bootstrap 5 · PostgreSQL**
+> **Forbes Marshall Method | FastAPI | Bootstrap 5 | PostgreSQL**
 
 A production-ready web application that calculates pressure drop across Y-strainers for 100% clean and 50% clogged screen conditions. Built with Python/FastAPI, validated against 14 real Forbes Marshall software screenshots (all pass ≤ 0.5% deviation).
 
