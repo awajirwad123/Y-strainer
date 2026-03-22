@@ -122,10 +122,21 @@ def login_post(
     username: str = Form(...),
     password: str = Form(...),
 ):
+    # Static credential check — set STATIC_USERNAME / STATIC_PASSWORD in Railway
+    # env vars for instant access without needing the database.
+    _static_user = os.environ.get("STATIC_USERNAME", "").strip()
+    _static_pass = os.environ.get("STATIC_PASSWORD", "").strip()
+    if _static_user and _static_pass:
+        if username.strip() == _static_user and password == _static_pass:
+            request.session["username"] = _static_user
+            return RedirectResponse("/", status_code=302)
+
+    # Database credential check (used when add_user.py accounts exist)
     user = get_user_by_username(username)
     if user and verify_password(password, user["password_hash"]):
         request.session["username"] = user["username"]
         return RedirectResponse("/", status_code=302)
+
     return templates.TemplateResponse(
         "login.html",
         {"request": request, "error": "Invalid username or password."},
