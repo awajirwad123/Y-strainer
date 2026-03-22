@@ -22,6 +22,7 @@ Run with:
     uvicorn main:app --reload
 """
 
+import os
 import secrets
 from pathlib import Path
 from contextlib import asynccontextmanager
@@ -44,15 +45,25 @@ from calculator import calculate
 from config import MESH_DATA, PERF_SHEET_DATA, STRAINER_DATA
 from database import init_db, create_user, get_user_by_username, verify_password
 
-# ── Session secret (persisted between restarts) ────────────────────────────────
+# ── Session secret ────────────────────────────────────────────────────────────
+# Production (Railway): set SESSION_SECRET_KEY env var in Railway dashboard.
+# Local dev: falls back to a file-persisted secret so sessions survive restarts.
 _SECRET_FILE = Path(__file__).parent / ".session_secret"
 
 
 def _get_session_secret() -> str:
+    # 1. Prefer explicit env var (required on Railway — filesystem is ephemeral)
+    env_key = os.environ.get("SESSION_SECRET_KEY", "").strip()
+    if env_key:
+        return env_key
+    # 2. Local dev: persist to file so sessions survive --reload restarts
     if _SECRET_FILE.exists():
         return _SECRET_FILE.read_text().strip()
     key = secrets.token_hex(32)
-    _SECRET_FILE.write_text(key)
+    try:
+        _SECRET_FILE.write_text(key)
+    except OSError:
+        pass  # read-only filesystem (Railway without env var set)
     return key
 
 
