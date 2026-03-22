@@ -16,8 +16,8 @@ env/
 .session_secret
 users.db
 
-# Excel reference data (large binary)
-*.xlsx
+# Excel reference data — included in repo so Railway can load it
+# *.xlsx
 
 # Pytest / coverage
 .pytest_cache/
