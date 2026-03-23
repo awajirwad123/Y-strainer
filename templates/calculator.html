@@ -246,6 +246,11 @@
 
   <!-- ── Results section ────────────────────────────────────────────────────── -->
   <div id="results-section" style="display:none">
+    <div class="d-flex justify-content-end mb-2">
+      <button id="btn-export-pdf" class="btn btn-sm" style="background:#1a3c5e;color:#fff;font-size:.8rem;padding:6px 18px;border-radius:4px;">
+        ⬇ Export PDF Report
+      </button>
+    </div>
     <div class="row g-2">
 
       <!-- 50% Clogged -->
@@ -306,6 +311,8 @@ const fmtFixed = (v, d) => (v !== null && v !== undefined) ? Number(v).toFixed(d
 let strainerData = [];
 let meshData = [];
 let perfData = [];
+let _lastResult = null;
+let _lastInputs = null;
 
 // ── Load lookup data on page load ────────────────────────────────────────────
 async function loadLookups() {
@@ -521,6 +528,30 @@ $('btn-calc').addEventListener('click', async () => {
 
 // ── Display results ────────────────────────────────────────────────────────────
 function displayResults(data, Q_pct, P_pct, D_open_cm, mu_cP) {
+  // Save for PDF export
+  _lastResult = data;
+  _lastInputs = {
+    tag_no:       $('tag_no').value,
+    fluid_name:   $('fluid_name').value,
+    company_name: $('company_name').value,
+    project_no:   $('project_no').value,
+    model:        $('model_select').value,
+    nps:          $('nps_select').value,
+    mesh_label:   $('mesh_select').options[$('mesh_select').selectedIndex]?.text || '',
+    perf_label:   $('perf_select').options[$('perf_select').selectedIndex]?.text || '',
+    rho:          $('rho').value,
+    mu_cP,
+    W:            $('flow_W').value,
+    flow_unit:    $('flow_unit').value,
+    D_pipe_cm:    $('D_pipe_cm').value,
+    D_screen_cm:  $('D_screen_cm').value,
+    L_cm:         $('L_cm').value,
+    D_open_cm,
+    Q_pct,
+    P_pct,
+    A_pipe:       $('disp_A_pipe').value,
+    A100:         $('disp_A100').value,
+  };
   const c50  = data.clogged_50pct;
   const c100 = data.clean_100pct;
 
@@ -561,6 +592,168 @@ function displayResults(data, Q_pct, P_pct, D_open_cm, mu_cP) {
   $('results-section').style.display = 'block';
   $('results-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
+
+// ── Export PDF ────────────────────────────────────────────────────────────────
+$('btn-export-pdf').addEventListener('click', () => {
+  if (!_lastResult || !_lastInputs) return;
+  const d = _lastResult;
+  const i = _lastInputs;
+  const c50  = d.clogged_50pct;
+  const c100 = d.clean_100pct;
+
+  const n  = (v, dp) => (v !== null && v !== undefined) ? Number(v).toFixed(dp) : '—';
+  const ne = (v) => (v !== null && v !== undefined) ? Number(v).toExponential(5) : '—';
+  const mu_cgs = (Number(i.mu_cP) * 0.01).toFixed(5);
+
+  const title = (i.nps ? `${i.nps}"` : '') +
+    (i.model ? ` ( Y-Type (${i.model}) )` : '') +
+    ' PRESSURE DROP CALCULATION';
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Pressure Drop Report${i.tag_no ? ' - ' + i.tag_no : ''}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: Arial, sans-serif; font-size: 8.5pt; color: #000; background:#fff; padding:15mm 12mm; }
+  h1 { font-size:10.5pt; text-align:center; font-weight:bold; letter-spacing:.3px; }
+  h2 { font-size:9pt; text-align:center; font-weight:bold; margin-top:3px; }
+  .outer-box { border:1.5px solid #000; }
+  .header-box { border-bottom:1.5px solid #000; padding:6px 10px; background:#fff; }
+  .section { border-bottom:1px solid #bbb; padding:5px 8px; }
+  .section:last-child { border-bottom:none; }
+  .legend { display:grid; grid-template-columns:1fr 1fr; gap:0 20px; }
+  .legend span { display:block; font-size:7.8pt; line-height:1.55; }
+  .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:4px 0; }
+  .info-row { display:flex; gap:4px; font-size:8pt; line-height:1.6; }
+  .info-label { min-width:160px; font-weight:normal; }
+  .info-val { font-weight:bold; }
+  .param-grid { display:grid; grid-template-columns:1fr 1fr; gap:0; }
+  .param-row { display:flex; gap:4px; font-size:8pt; line-height:1.7; padding:0 4px; }
+  .param-label { min-width:200px; }
+  .results-title { background:#e0e8f0; text-align:center; font-weight:bold; font-size:9pt; padding:4px; border-bottom:1px solid #aaa; letter-spacing:1px; }
+  table.res { width:100%; border-collapse:collapse; font-size:8pt; }
+  table.res th, table.res td { border:1px solid #888; padding:4px 8px; text-align:left; }
+  table.res th { background:#d0dce8; font-weight:bold; text-align:center; }
+  table.res td.num { text-align:right; font-family:monospace; font-size:8pt; }
+  table.res td.unit { text-align:left; color:#444; }
+  table.res tr.dp-row td { font-weight:bold; background:#f5f9ff; }
+  .footer { margin-top:10px; font-size:7pt; color:#666; text-align:right; }
+  @page { size:A4 portrait; margin:0; }
+  @media print {
+    body { padding:10mm 10mm; }
+    button { display:none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="outer-box">
+
+  <!-- HEADER -->
+  <div class="header-box" style="text-align:center; padding:8px;">
+    <h1>${title}</h1>
+    <h2>TAG NO. : ${i.tag_no || 'N/A'}</h2>
+  </div>
+
+  <!-- LEGEND -->
+  <div class="section">
+    <div class="legend">
+      <div>
+        <span>&#916;P &nbsp;- Pressure drop</span>
+        <span>C &nbsp;&nbsp;- Coefficient of discharge (From Perry page no. 6-20)</span>
+        <span>&#945; &nbsp;&nbsp;- Effective opening area mmSq</span>
+        <span>g &nbsp;&nbsp;- Gravitational force cm/sec&#178;</span>
+        <span>Q &nbsp;&nbsp;- % opening in wire mesh</span>
+        <span>P &nbsp;&nbsp;- % opening in perforated sheet</span>
+        <span>V &nbsp;&nbsp;- Superficial Velocity of fluid based upon the gross area of the screen cm/sec</span>
+      </div>
+      <div>
+        <span>Re &nbsp;- Reynolds No.</span>
+        <span>D &nbsp;&nbsp;- opening width</span>
+        <span>p &nbsp;&nbsp;- Density of ${i.fluid_name || 'FLUID'} in gm/cm&#179;</span>
+        <span>&#956; &nbsp;&nbsp;- viscosity of ${i.fluid_name || 'FLUID'} in gm/cm&#178;</span>
+        <span>K &nbsp;&nbsp;- Velocity Head Loss</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROJECT INFO -->
+  <div class="section">
+    <div class="info-grid">
+      <div>
+        <div class="info-row"><span class="info-label">Customer Name</span><span>:&nbsp;<strong>${i.company_name || 'N/A'}</strong></span></div>
+        <div class="info-row"><span class="info-label">Project No.</span><span>:&nbsp;<strong>${i.project_no || 'N/A'}</strong></span></div>
+        <div class="info-row"><span class="info-label">Fluid</span><span>:&nbsp;<strong>${i.fluid_name || 'N/A'}</strong></span></div>
+        <div class="info-row" style="margin-top:6px;"><span class="info-label">Size</span><span>:&nbsp;<strong>${i.nps ? i.nps + '"' : 'N/A'}</strong></span></div>
+        <div class="info-row"><span class="info-label">ID</span><span>:&nbsp;<strong>${i.D_pipe_cm} cm</strong></span></div>
+        <div class="info-row"><span class="info-label">Cross section area of pipe</span><span>:&nbsp;<strong>${n(i.A_pipe,6)} cm&#178;</strong></span></div>
+      </div>
+      <div>
+        <div class="info-row"><span class="info-label">Diameter of screen</span><span>:&nbsp;<strong>${i.D_screen_cm} cm</strong></span></div>
+        <div class="info-row"><span class="info-label">Length of screen</span><span>:&nbsp;<strong>${i.L_cm} cm</strong></span></div>
+        <div class="info-row"><span class="info-label">Surface area of the screen</span><span>:&nbsp;<strong>${n(i.A100,6)} cm&#178;</strong></span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- INPUT PARAMETERS -->
+  <div class="section">
+    <div class="param-grid">
+      <div>
+        <div class="param-row"><span class="param-label">Q (${i.mesh_label.split('(')[0].trim() || 'Mesh'})</span><span>: <strong>${n(i.Q_pct,1)} %</strong></span></div>
+        <div class="param-row"><span class="param-label">P (${i.perf_label.split('(')[0].trim() || 'Perforation'})</span><span>: <strong>${n(i.P_pct,1)} %</strong></span></div>
+        <div class="param-row"><span class="param-label">D</span><span>: <strong>${i.D_open_cm} cm</strong></span></div>
+        <div class="param-row"><span class="param-label">&#945;</span><span>: <strong>${n(d.alpha,5)}</strong> mmSq</span></div>
+      </div>
+      <div>
+        <div class="param-row"><span class="param-label">p</span><span>: <strong>${i.rho}</strong> gm/cm&#179;</span></div>
+        <div class="param-row"><span class="param-label">&#956;</span><span>: <strong>${mu_cgs}</strong> gm/cm&#183;s</span></div>
+        <div class="param-row"><span class="param-label">Flow</span><span>: <strong>${n(d.Q_vol_cm3_s,7)}</strong> cm&#179;/sec</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULTS TABLE -->
+  <div class="section" style="padding:0;">
+    <div class="results-title">RESULTS</div>
+    <table class="res">
+      <thead>
+        <tr>
+          <th style="width:38%;text-align:left;"></th>
+          <th style="width:22%;">&#64;50% Clogged<br>Condition</th>
+          <th style="width:22%;">&#64;100% Clean Condition</th>
+          <th style="width:18%;">Unit</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Surface area of the screen</td><td class="num">${n(c50.surface_area_cm2,7)}</td><td class="num">${n(c100.surface_area_cm2,7)}</td><td class="unit">cm&#178;</td></tr>
+        <tr><td>Net area of the screen</td><td class="num">${n(c50.net_surface_area_cm2,10)}</td><td class="num">${n(c100.net_surface_area_cm2,10)}</td><td class="unit">cm&#178;</td></tr>
+        <tr><td>Ratio</td><td class="num">${n(c50.screening_area_ratio,7)}</td><td class="num">${n(c100.screening_area_ratio,7)}</td><td class="unit"></td></tr>
+        <tr><td>V</td><td class="num">${n(c50.V_cm_s,8)}</td><td class="num">${n(c100.V_cm_s,8)}</td><td class="unit">cm/sec</td></tr>
+        <tr><td>Re</td><td class="num">${n(c50.Re,5)}</td><td class="num">${n(c100.Re,5)}</td><td class="unit"></td></tr>
+        <tr><td>C</td><td class="num">${c50.C}</td><td class="num">${c100.C}</td><td class="unit"></td></tr>
+        <tr><td>g</td><td class="num">981</td><td class="num">981</td><td class="unit">cm/sec&#178;</td></tr>
+        <tr><td>K</td><td class="num">${n(c50.K,5)}</td><td class="num">${n(c100.K,5)}</td><td class="unit"></td></tr>
+        <tr class="dp-row"><td>&#916;P</td><td class="num">${n(c50.delta_P_cm_wc,6)}</td><td class="num">${n(c100.delta_P_cm_wc,6)}</td><td class="unit">cm WC</td></tr>
+        <tr class="dp-row"><td>&#916;P</td><td class="num">${n(c50.delta_P_in_wc,5)}</td><td class="num">${n(c100.delta_P_in_wc,5)}</td><td class="unit">inches of water</td></tr>
+        <tr class="dp-row"><td>&#916;P</td><td class="num">${n(c50.delta_P_kg_cm2,5)}</td><td class="num">${n(c100.delta_P_kg_cm2,5)}</td><td class="unit">Kg/cm&#178; (g)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<div class="footer">Generated by Y-Strainer Pressure Drop Calculator &mdash; Forbes Marshall Method &mdash; ${new Date().toLocaleString()}</div>
+
+<script>window.onload = () => window.print();<\/script>
+</body></html>`;
+
+  const win = window.open('', '_blank', 'width=900,height=700');
+  win.document.write(html);
+  win.document.close();
+});
 
 // ── Clear ─────────────────────────────────────────────────────────────────────
 $('btn-clear').addEventListener('click', () => {
