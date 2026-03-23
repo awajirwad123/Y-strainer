@@ -105,7 +105,7 @@ def home(request: Request):
     if not _current_user(request):
         return RedirectResponse("/login", status_code=302)
     return templates.TemplateResponse(
-        "calculator.html", {"request": request, "username": _current_user(request)}
+        request, "calculator.html", {"username": _current_user(request)}
     )
 
 
@@ -113,7 +113,7 @@ def home(request: Request):
 def login_page(request: Request):
     if _current_user(request):
         return RedirectResponse("/", status_code=302)
-    return templates.TemplateResponse("login.html", {"request": request, "error": None})
+    return templates.TemplateResponse(request, "login.html", {"error": None})
 
 
 @app.post("/login", response_class=HTMLResponse, include_in_schema=False)
@@ -138,8 +138,7 @@ def login_post(
         return RedirectResponse("/", status_code=302)
 
     return templates.TemplateResponse(
-        "login.html",
-        {"request": request, "error": "Invalid username or password."},
+        request, "login.html", {"error": "Invalid username or password."},
     )
 
 
