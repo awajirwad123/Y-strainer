@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -57,9 +57,9 @@
           <!-- Fluid properties -->
           <div class="row g-2 mb-2">
             <div class="col-4">
-              <div class="form-label-sm">Density (gm/cm³)</div>
+              <div class="form-label-sm">Density (kg/m³)</div>
               <input id="rho" type="number" class="form-control form-control-sm"
-                     step="0.0001" placeholder="0.951" min="0">
+                     step="0.0001" placeholder="951" min="0">
             </div>
             <div class="col-4">
               <div class="form-label-sm">Viscosity (cP)</div>
@@ -239,7 +239,7 @@
     <span class="sum-item"><span class="sum-label">P: </span><span class="sum-val" id="sum_P"></span></span>
     <span class="sum-item"><span class="sum-label">D: </span><span class="sum-val" id="sum_D"></span> cm</span>
     <span class="sum-item"><span class="sum-label">α: </span><span class="sum-val" id="sum_alpha"></span></span>
-    <span class="sum-item"><span class="sum-label">ρ: </span><span class="sum-val" id="sum_rho"></span> gm/cm³</span>
+    <span class="sum-item"><span class="sum-label">ρ: </span><span class="sum-val" id="sum_rho"></span> kg/m³</span>
     <span class="sum-item"><span class="sum-label">μ: </span><span class="sum-val" id="sum_mu"></span> gm/cm·s</span>
     <span class="sum-item"><span class="sum-label">Flow: </span><span class="sum-val" id="sum_flow"></span> cm³/sec</span>
   </div>
@@ -672,7 +672,7 @@ $('btn-export-pdf').addEventListener('click', () => {
       <div>
         <span>Re &nbsp;- Reynolds No.</span>
         <span>D &nbsp;&nbsp;- opening width</span>
-        <span>p &nbsp;&nbsp;- Density of ${i.fluid_name || 'FLUID'} in gm/cm&#179;</span>
+        <span>p &nbsp;&nbsp;- Density of ${i.fluid_name || 'FLUID'} in kg/m&#179;</span>
         <span>&#956; &nbsp;&nbsp;- viscosity of ${i.fluid_name || 'FLUID'} in gm/cm&#178;</span>
         <span>K &nbsp;&nbsp;- Velocity Head Loss</span>
       </div>
