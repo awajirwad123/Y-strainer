@@ -122,3 +122,8 @@ class StrainerSizeOption(BaseModel):
     pipe_OD_mm: float
     screen_D_mm: float
     screen_L_mm: float
+
+
+class PipeNPSOption(BaseModel):
+    nps_inch: str
+    dn_mm: float

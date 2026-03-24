@@ -40,9 +40,10 @@ from schemas import (
     MeshOption,
     PerfOption,
     StrainerSizeOption,
+    PipeNPSOption,
 )
 from calculator import calculate
-from config import MESH_DATA, PERF_SHEET_DATA, STRAINER_DATA
+from config import MESH_DATA, PERF_SHEET_DATA, STRAINER_DATA, PIPE_NPS_DATA
 from database import init_db, create_user, get_user_by_username, verify_password
 
 # ── Session secret ────────────────────────────────────────────────────────────
@@ -302,4 +303,18 @@ def list_strainer_models() -> list[StrainerSizeOption]:
             pipe_OD_mm=v[0], screen_D_mm=v[1], screen_L_mm=v[2],
         )
         for k, v in sorted(STRAINER_DATA.items())
+    ]
+
+
+@app.get(
+    "/lookup/pipe-nps",
+    response_model=list[PipeNPSOption],
+    summary="List available pipe NPS sizes",
+    tags=["lookup"],
+)
+def list_pipe_nps() -> list[PipeNPSOption]:
+    """Returns all unique NPS inch values with their DN (nominal bore) in mm."""
+    return [
+        PipeNPSOption(nps_inch=nps, dn_mm=dn)
+        for nps, dn in PIPE_NPS_DATA.items()
     ]

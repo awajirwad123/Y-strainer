@@ -91,24 +91,31 @@ def _load_tables() -> tuple:
     # Pipe Sizes — standard pipe schedule dimensions
     # Columns: sl_no, NPS_inch, Nominal_bore, OD, SchNoCS1, SchNoCS2, ID, DN, ...
     pipe_data: dict = {}
+    pipe_nps_data: dict = {}  # {nps_inch_str: dn_mm} — first unique occurrence wins
     for row in wb["Pipe sizes"].iter_rows(min_row=2, values_only=True):
         nps = str(row[1]).strip() if row[1] else None
         nb  = str(row[2]).strip() if row[2] else None
         sch = str(row[5]).strip() if row[5] else ""
         id_val = row[6]
+        dn_val = row[7]
         if id_val is not None:
             id_mm = float(id_val)
             if nps:
                 pipe_data[(nps, sch)] = id_mm
             if nb:
                 pipe_data[(nb, sch)] = id_mm
+        if nps and dn_val is not None and nps not in pipe_nps_data:
+            try:
+                pipe_nps_data[nps] = float(dn_val)
+            except (ValueError, TypeError):
+                pass  # skip rows where DN is not a plain number
 
     wb.close()
-    return mesh_data, perf_sheet_data, strainer_data, pipe_data
+    return mesh_data, perf_sheet_data, strainer_data, pipe_data, pipe_nps_data
 
 
 try:
-    MESH_DATA, PERF_SHEET_DATA, STRAINER_DATA, PIPE_DATA = _load_tables()
+    MESH_DATA, PERF_SHEET_DATA, STRAINER_DATA, PIPE_DATA, PIPE_NPS_DATA = _load_tables()
 except Exception as _exc:
     raise RuntimeError(
         f"Failed to load reference tables from '{_EXCEL_PATH}': {_exc}"

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -106,22 +106,6 @@
             </div>
           </div>
 
-          <!-- Strainer model selection -->
-          <div class="row g-2 mb-2">
-            <div class="col-7">
-              <div class="form-label-sm">Y-Type Model</div>
-              <select id="model_select" class="form-select form-select-sm">
-                <option value="">— Select Model —</option>
-              </select>
-            </div>
-            <div class="col-5">
-              <div class="form-label-sm">Size (NPS)</div>
-              <select id="nps_select" class="form-select form-select-sm">
-                <option value="">— NPS —</option>
-              </select>
-            </div>
-          </div>
-
           <!-- Screen dimensions -->
           <div class="row g-2 mb-2">
             <div class="col-6">
@@ -157,6 +141,16 @@
       <div class="calc-card h-100">
         <div class="section-header">Screen &amp; Pipe Selection</div>
         <div class="px-3 py-2">
+
+          <!-- Pipe NPS selection -->
+          <div class="row g-2 mb-2">
+            <div class="col-8">
+              <div class="form-label-sm">Size (NPS)</div>
+              <select id="pipe_nps_select" class="form-select form-select-sm">
+                <option value="">— Select NPS —</option>
+              </select>
+            </div>
+          </div>
 
           <!-- Pipe dimensions -->
           <div class="row g-2 mb-2">
@@ -308,7 +302,7 @@ const fmt = (v, d = 6) => (v !== null && v !== undefined) ? Number(v).toPrecisio
 const fmtFixed = (v, d) => (v !== null && v !== undefined) ? Number(v).toFixed(d) : '—';
 
 // ── State ────────────────────────────────────────────────────────────────────
-let strainerData = [];
+let pipeNPSData = [];
 let meshData = [];
 let perfData = [];
 let _lastResult = null;
@@ -317,12 +311,12 @@ let _lastInputs = null;
 // ── Load lookup data on page load ────────────────────────────────────────────
 async function loadLookups() {
   try {
-    [strainerData, meshData, perfData] = await Promise.all([
-      fetch('/lookup/strainer-models').then(r => r.json()),
+    [pipeNPSData, meshData, perfData] = await Promise.all([
+      fetch('/lookup/pipe-nps').then(r => r.json()),
       fetch('/lookup/meshes').then(r => r.json()),
       fetch('/lookup/perforations').then(r => r.json()),
     ]);
-    populateModels();
+    populatePipeNPS();
     populateMesh();
     populatePerf();
   } catch(e) {
@@ -330,41 +324,27 @@ async function loadLookups() {
   }
 }
 
-// ── Populate strainer model dropdown ─────────────────────────────────────────
-function populateModels() {
-  const models = [...new Set(strainerData.map(s => s.model))].sort();
-  const sel = $('model_select');
-  models.forEach(m => {
+// ── Populate pipe NPS dropdown ────────────────────────────────────────────
+function populatePipeNPS() {
+  const sel = $('pipe_nps_select');
+  pipeNPSData.forEach(p => {
     const opt = document.createElement('option');
-    opt.value = m; opt.textContent = m;
+    opt.value = JSON.stringify({ nps_inch: p.nps_inch, dn_mm: p.dn_mm });
+    opt.textContent = 'NPS ' + p.nps_inch;
     sel.appendChild(opt);
   });
 }
 
-// ── On model change → populate NPS ───────────────────────────────────────────
-$('model_select').addEventListener('change', () => {
-  const model = $('model_select').value;
-  const npsSel = $('nps_select');
-  npsSel.innerHTML = '<option value="">— NPS —</option>';
-  if (!model) return;
-  const entries = strainerData.filter(s => s.model === model);
-  entries.forEach(e => {
-    const opt = document.createElement('option');
-    opt.value = e.nps; opt.textContent = 'NPS ' + e.nps;
-    npsSel.appendChild(opt);
-  });
-});
-
-// ── On NPS change → auto-fill screen dimensions ───────────────────────────────
-$('nps_select').addEventListener('change', () => {
-  const model = $('model_select').value;
-  const nps   = $('nps_select').value;
-  if (!model || !nps) return;
-  const entry = strainerData.find(s => s.model === model && s.nps === nps);
-  if (entry) {
-    $('D_screen_cm').value = (entry.screen_D_mm / 10).toFixed(3);
-    $('L_cm').value        = (entry.screen_L_mm / 10).toFixed(3);
-    updateSurfaceAreas();
+// ── On NPS change → auto-fill Pipe ID ────────────────────────────────────
+$('pipe_nps_select').addEventListener('change', () => {
+  const val = $('pipe_nps_select').value;
+  if (val) {
+    const p = JSON.parse(val);
+    $('D_pipe_cm').value = (p.dn_mm / 10).toFixed(3);
+    updatePipeArea();
+  } else {
+    $('D_pipe_cm').value = '';
+    $('disp_A_pipe').value = '';
   }
 });
 
@@ -535,8 +515,7 @@ function displayResults(data, Q_pct, P_pct, D_open_cm, mu_cP) {
     fluid_name:   $('fluid_name').value,
     company_name: $('company_name').value,
     project_no:   $('project_no').value,
-    model:        $('model_select').value,
-    nps:          $('nps_select').value,
+    pipe_nps:     (() => { const v = $('pipe_nps_select').value; if (!v) return ''; try { return JSON.parse(v).nps_inch; } catch { return ''; } })(),
     mesh_label:   $('mesh_select').options[$('mesh_select').selectedIndex]?.text || '',
     perf_label:   $('perf_select').options[$('perf_select').selectedIndex]?.text || '',
     rho:          $('rho').value,
@@ -605,8 +584,7 @@ $('btn-export-pdf').addEventListener('click', () => {
   const ne = (v) => (v !== null && v !== undefined) ? Number(v).toExponential(5) : '—';
   const mu_cgs = (Number(i.mu_cP) * 0.01).toFixed(5);
 
-  const title = (i.nps ? `${i.nps}"` : '') +
-    (i.model ? ` ( Y-Type (${i.model}) )` : '') +
+  const title = (i.pipe_nps ? `NPS ${i.pipe_nps}` : '') +
     ' PRESSURE DROP CALCULATION';
 
   const html = `<!DOCTYPE html>
@@ -686,7 +664,7 @@ $('btn-export-pdf').addEventListener('click', () => {
         <div class="info-row"><span class="info-label">Customer Name</span><span>:&nbsp;<strong>${i.company_name || 'N/A'}</strong></span></div>
         <div class="info-row"><span class="info-label">Project No.</span><span>:&nbsp;<strong>${i.project_no || 'N/A'}</strong></span></div>
         <div class="info-row"><span class="info-label">Fluid</span><span>:&nbsp;<strong>${i.fluid_name || 'N/A'}</strong></span></div>
-        <div class="info-row" style="margin-top:6px;"><span class="info-label">Size</span><span>:&nbsp;<strong>${i.nps ? i.nps + '"' : 'N/A'}</strong></span></div>
+        <div class="info-row" style="margin-top:6px;"><span class="info-label">Size (NPS)</span><span>:&nbsp;<strong>${i.pipe_nps || 'N/A'}</strong></span></div>
         <div class="info-row"><span class="info-label">ID</span><span>:&nbsp;<strong>${i.D_pipe_cm} cm</strong></span></div>
         <div class="info-row"><span class="info-label">Cross section area of pipe</span><span>:&nbsp;<strong>${n(i.A_pipe,6)} cm&#178;</strong></span></div>
       </div>
@@ -708,7 +686,7 @@ $('btn-export-pdf').addEventListener('click', () => {
         <div class="param-row"><span class="param-label">&#945;</span><span>: <strong>${n(d.alpha,5)}</strong> mmSq</span></div>
       </div>
       <div>
-        <div class="param-row"><span class="param-label">p</span><span>: <strong>${i.rho}</strong> gm/cm&#179;</span></div>
+        <div class="param-row"><span class="param-label">p</span><span>: <strong>${i.rho}</strong> kg/m&#179;</span></div>
         <div class="param-row"><span class="param-label">&#956;</span><span>: <strong>${mu_cgs}</strong> gm/cm&#183;s</span></div>
         <div class="param-row"><span class="param-label">Flow</span><span>: <strong>${n(d.Q_vol_cm3_s,7)}</strong> cm&#179;/sec</span></div>
       </div>
@@ -762,7 +740,7 @@ $('btn-clear').addEventListener('click', () => {
    'L_cm','D_screen_cm','D_pipe_cm','D_open_cm','Q_pct','P_pct',
    'disp_A100','disp_A50','disp_A_pipe','disp_alpha'
   ].forEach(id => $(id).value = '');
-  ['model_select','nps_select','mesh_select','perf_select'].forEach(id => $(id).selectedIndex = 0);
+  ['pipe_nps_select','mesh_select','perf_select'].forEach(id => $(id).selectedIndex = 0);
   $('flow_unit').value = 'kg/hr';
   $('summary-band').style.display    = 'none';
   $('results-section').style.display = 'none';
