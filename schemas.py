@@ -127,3 +127,7 @@ class StrainerSizeOption(BaseModel):
 class PipeNPSOption(BaseModel):
     nps_inch: str
     dn_mm: float
+
+
+class PRClassOption(BaseModel):
+    rating: int

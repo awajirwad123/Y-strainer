@@ -110,12 +110,23 @@ def _load_tables() -> tuple:
             except (ValueError, TypeError):
                 pass  # skip rows where DN is not a plain number
 
+    # Pr Class — pressure rating classes
+    # Columns: Rating, RatingNo
+    pr_class_data: list = []
+    for row in wb["Pr Class"].iter_rows(min_row=2, values_only=True):
+        if row[0] is not None:
+            try:
+                pr_class_data.append(int(row[0]))
+            except (ValueError, TypeError):
+                pass
+    pr_class_data.sort()
+
     wb.close()
-    return mesh_data, perf_sheet_data, strainer_data, pipe_data, pipe_nps_data
+    return mesh_data, perf_sheet_data, strainer_data, pipe_data, pipe_nps_data, pr_class_data
 
 
 try:
-    MESH_DATA, PERF_SHEET_DATA, STRAINER_DATA, PIPE_DATA, PIPE_NPS_DATA = _load_tables()
+    MESH_DATA, PERF_SHEET_DATA, STRAINER_DATA, PIPE_DATA, PIPE_NPS_DATA, PR_CLASS_DATA = _load_tables()
 except Exception as _exc:
     raise RuntimeError(
         f"Failed to load reference tables from '{_EXCEL_PATH}': {_exc}"

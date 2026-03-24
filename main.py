@@ -41,9 +41,10 @@ from schemas import (
     PerfOption,
     StrainerSizeOption,
     PipeNPSOption,
+    PRClassOption,
 )
 from calculator import calculate
-from config import MESH_DATA, PERF_SHEET_DATA, STRAINER_DATA, PIPE_NPS_DATA
+from config import MESH_DATA, PERF_SHEET_DATA, STRAINER_DATA, PIPE_NPS_DATA, PR_CLASS_DATA
 from database import init_db, create_user, get_user_by_username, verify_password
 
 # ── Session secret ────────────────────────────────────────────────────────────
@@ -318,3 +319,14 @@ def list_pipe_nps() -> list[PipeNPSOption]:
         PipeNPSOption(nps_inch=nps, dn_mm=dn)
         for nps, dn in PIPE_NPS_DATA.items()
     ]
+
+
+@app.get(
+    "/lookup/pr-class",
+    response_model=list[PRClassOption],
+    summary="List available pressure rating classes",
+    tags=["lookup"],
+)
+def list_pr_class() -> list[PRClassOption]:
+    """Returns all pressure rating classes (e.g. 150, 300, 600, 900, 1500, 2500)."""
+    return [PRClassOption(rating=r) for r in PR_CLASS_DATA]

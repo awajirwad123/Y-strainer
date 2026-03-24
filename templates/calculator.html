@@ -120,12 +120,18 @@
             </div>
           </div>
 
-          <!-- Pipe NPS selection -->
+          <!-- Pipe NPS + Rating selection -->
           <div class="row g-2 mb-2">
-            <div class="col-8">
+            <div class="col-6">
               <div class="form-label-sm">Size (NPS)</div>
               <select id="pipe_nps_select" class="form-select form-select-sm">
                 <option value="">— Select NPS —</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <div class="form-label-sm">Rating</div>
+              <select id="rating_select" class="form-select form-select-sm">
+                <option value="">— Select Rating —</option>
               </select>
             </div>
           </div>
@@ -303,6 +309,7 @@ const fmtFixed = (v, d) => (v !== null && v !== undefined) ? Number(v).toFixed(d
 
 // ── State ────────────────────────────────────────────────────────────────────
 let pipeNPSData = [];
+let prClassData = [];
 let meshData = [];
 let perfData = [];
 let _lastResult = null;
@@ -311,12 +318,14 @@ let _lastInputs = null;
 // ── Load lookup data on page load ────────────────────────────────────────────
 async function loadLookups() {
   try {
-    [pipeNPSData, meshData, perfData] = await Promise.all([
+    [pipeNPSData, prClassData, meshData, perfData] = await Promise.all([
       fetch('/lookup/pipe-nps').then(r => r.json()),
+      fetch('/lookup/pr-class').then(r => r.json()),
       fetch('/lookup/meshes').then(r => r.json()),
       fetch('/lookup/perforations').then(r => r.json()),
     ]);
     populatePipeNPS();
+    populatePRClass();
     populateMesh();
     populatePerf();
   } catch(e) {
@@ -331,6 +340,17 @@ function populatePipeNPS() {
     const opt = document.createElement('option');
     opt.value = JSON.stringify({ nps_inch: p.nps_inch, dn_mm: p.dn_mm });
     opt.textContent = 'NPS ' + p.nps_inch;
+    sel.appendChild(opt);
+  });
+}
+
+// ── Populate PR Class rating dropdown ───────────────────────────────────
+function populatePRClass() {
+  const sel = $('rating_select');
+  prClassData.forEach(r => {
+    const opt = document.createElement('option');
+    opt.value = r.rating;
+    opt.textContent = '#' + r.rating;
     sel.appendChild(opt);
   });
 }
@@ -516,6 +536,7 @@ function displayResults(data, Q_pct, P_pct, D_open_cm, mu_cP) {
     company_name: $('company_name').value,
     project_no:   $('project_no').value,
     pipe_nps:     (() => { const v = $('pipe_nps_select').value; if (!v) return ''; try { return JSON.parse(v).nps_inch; } catch { return ''; } })(),
+    rating:       $('rating_select').value || '',
     mesh_label:   $('mesh_select').options[$('mesh_select').selectedIndex]?.text || '',
     perf_label:   $('perf_select').options[$('perf_select').selectedIndex]?.text || '',
     rho:          $('rho').value,
@@ -665,6 +686,7 @@ $('btn-export-pdf').addEventListener('click', () => {
         <div class="info-row"><span class="info-label">Project No.</span><span>:&nbsp;<strong>${i.project_no || 'N/A'}</strong></span></div>
         <div class="info-row"><span class="info-label">Fluid</span><span>:&nbsp;<strong>${i.fluid_name || 'N/A'}</strong></span></div>
         <div class="info-row" style="margin-top:6px;"><span class="info-label">Size (NPS)</span><span>:&nbsp;<strong>${i.pipe_nps || 'N/A'}</strong></span></div>
+        <div class="info-row"><span class="info-label">Rating</span><span>:&nbsp;<strong>${i.rating ? '#' + i.rating : 'N/A'}</strong></span></div>
         <div class="info-row"><span class="info-label">ID</span><span>:&nbsp;<strong>${i.D_pipe_cm} cm</strong></span></div>
         <div class="info-row"><span class="info-label">Cross section area of pipe</span><span>:&nbsp;<strong>${n(i.A_pipe,6)} cm&#178;</strong></span></div>
       </div>
@@ -740,7 +762,7 @@ $('btn-clear').addEventListener('click', () => {
    'L_cm','D_screen_cm','D_pipe_cm','D_open_cm','Q_pct','P_pct',
    'disp_A100','disp_A50','disp_A_pipe','disp_alpha'
   ].forEach(id => $(id).value = '');
-  ['pipe_nps_select','mesh_select','perf_select'].forEach(id => $(id).selectedIndex = 0);
+  ['pipe_nps_select','rating_select','mesh_select','perf_select'].forEach(id => $(id).selectedIndex = 0);
   $('flow_unit').value = 'kg/hr';
   $('summary-band').style.display    = 'none';
   $('results-section').style.display = 'none';
