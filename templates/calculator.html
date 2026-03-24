@@ -28,19 +28,19 @@
     <div class="row g-2">
       <div class="col-md-3 col-sm-6">
         <div class="form-label-sm">Tag No.</div>
-        <input id="tag_no" type="text" class="form-control form-control-sm" placeholder="ND031-PZSY-0303">
+        <input id="tag_no" type="text" class="form-control form-control-sm" placeholder="PRD-001">
       </div>
       <div class="col-md-3 col-sm-6">
         <div class="form-label-sm">Fluid Name</div>
-        <input id="fluid_name" type="text" class="form-control form-control-sm" placeholder="LOW PRESSURE STEAM">
+        <input id="fluid_name" type="text" class="form-control form-control-sm" >
       </div>
       <div class="col-md-3 col-sm-6">
         <div class="form-label-sm">Company / Name</div>
-        <input id="company_name" type="text" class="form-control form-control-sm" placeholder="RELIANCE INDUSTRIES LTD">
+        <input id="company_name" type="text" class="form-control form-control-sm" placeholder="Client name">
       </div>
       <div class="col-md-3 col-sm-6">
         <div class="form-label-sm">Project No.</div>
-        <input id="project_no" type="text" class="form-control form-control-sm" placeholder="WSM2511115">
+        <input id="project_no" type="text" class="form-control form-control-sm" placeholder="PRJ1000">
       </div>
     </div>
   </div>
@@ -59,18 +59,18 @@
             <div class="col-4">
               <div class="form-label-sm">Density (kg/m³)</div>
               <input id="rho" type="number" class="form-control form-control-sm"
-                     step="0.0001" placeholder="951" min="0">
+                     step="0.0001" min="0">
             </div>
             <div class="col-4">
               <div class="form-label-sm">Viscosity (cP)</div>
               <input id="mu_cP" type="number" class="form-control form-control-sm"
-                     step="0.0001" placeholder="0.248" min="0">
+                     step="0.0001" min="0">
             </div>
             <div class="col-4">
               <div class="form-label-sm">Flow</div>
               <div class="input-group input-group-sm">
                 <input id="flow_W" type="number" class="form-control form-control-sm"
-                       step="0.001" placeholder="165" min="0">
+                       step="0.001" min="0">
                 <select id="flow_unit" class="form-select form-select-sm" style="max-width:80px">
                   <option value="kg/hr">kg/hr</option>
                   <option value="m3/hr">m³/hr</option>
@@ -111,12 +111,22 @@
             <div class="col-6">
               <div class="form-label-sm">Length of Screen (cm)</div>
               <input id="L_cm" type="number" class="form-control form-control-sm"
-                     step="0.001" placeholder="8.0" min="0">
+                     step="0.001" min="0">
             </div>
             <div class="col-6">
               <div class="form-label-sm">Diameter of Screen (cm)</div>
               <input id="D_screen_cm" type="number" class="form-control form-control-sm"
-                     step="0.001" placeholder="2.6" min="0">
+                     step="0.001" min="0">
+            </div>
+          </div>
+
+          <!-- Pipe NPS selection -->
+          <div class="row g-2 mb-2">
+            <div class="col-8">
+              <div class="form-label-sm">Size (NPS)</div>
+              <select id="pipe_nps_select" class="form-select form-select-sm">
+                <option value="">— Select NPS —</option>
+              </select>
             </div>
           </div>
 
@@ -142,22 +152,12 @@
         <div class="section-header">Screen &amp; Pipe Selection</div>
         <div class="px-3 py-2">
 
-          <!-- Pipe NPS selection -->
-          <div class="row g-2 mb-2">
-            <div class="col-8">
-              <div class="form-label-sm">Size (NPS)</div>
-              <select id="pipe_nps_select" class="form-select form-select-sm">
-                <option value="">— Select NPS —</option>
-              </select>
-            </div>
-          </div>
-
           <!-- Pipe dimensions -->
           <div class="row g-2 mb-2">
             <div class="col-4">
               <div class="form-label-sm">Pipe ID (cm)</div>
               <input id="D_pipe_cm" type="number" class="form-control form-control-sm"
-                     step="0.001" placeholder="2.5" min="0">
+                     step="0.001"  min="0">
             </div>
             <div class="col-4">
               <div class="form-label-sm">Cross-Section Area (cm²)</div>
@@ -205,7 +205,7 @@
             <div class="col-4">
               <div class="form-label-sm">Opening Width D (cm)</div>
               <input id="D_open_cm" type="number" class="form-control form-control-sm"
-                     step="0.00001" placeholder="0.05" min="0">
+                     step="0.00001" min="0">
             </div>
             <div class="col-8 d-flex align-items-end">
               <div id="error-banner" class="w-100">⚠ <span id="error-msg"></span></div>
