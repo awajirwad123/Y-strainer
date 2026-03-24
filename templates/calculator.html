@@ -215,7 +215,7 @@
             <div class="col-4">
               <div class="form-label-sm">Opening Width D (cm)</div>
               <input id="D_open_cm" type="number" class="form-control form-control-sm"
-                     step="0.00001" min="0">
+                     min="0">
             </div>
             <div class="col-8 d-flex align-items-end">
               <div id="error-banner" class="w-100">⚠ <span id="error-msg"></span></div>
@@ -392,7 +392,7 @@ $('mesh_select').addEventListener('change', () => {
   } else if (val) {
     const m = JSON.parse(val);
     $('Q_pct').value     = m.Q.toFixed(2);
-    $('D_open_cm').value = (m.opening_mm / 10).toFixed(5);
+    $('D_open_cm').value = parseFloat((m.opening_mm / 10).toFixed(6)).toString();
   } else {
     $('Q_pct').value = '';
     $('D_open_cm').value = '';
