@@ -64,7 +64,7 @@ CASES = [
     {
         "id": "SS1-ND031-PZSY-0303",
         "input": {
-            "rho": 0.951, "mu_cP": 0.248, "W": 165, "flow_unit": "kg/hr",
+            "rho": 951.0, "mu_cP": 0.248, "W": 165, "flow_unit": "kg/hr",
             "D_pipe_cm": 2.5, "D_screen_cm": 2.6, "L_cm": 8.0,
             "D_open_cm": 0.05, "Q_pct": 62.7, "P_pct": 51,
         },
@@ -102,7 +102,7 @@ CASES = [
     {
         "id": "SS2-ND031-PZSY-0305-m3hr",
         "input": {
-            "rho": 0.951, "mu_cP": 0.248, "W": 0.165, "flow_unit": "m3/hr",
+            "rho": 951.0, "mu_cP": 0.248, "W": 0.165, "flow_unit": "m3/hr",
             "D_pipe_cm": 2.5, "D_screen_cm": 2.6, "L_cm": 8.0,
             "D_open_cm": 0.05, "Q_pct": 62.7, "P_pct": 51,
         },
@@ -135,7 +135,7 @@ CASES = [
     {
         "id": "SS3-ND031-PZSY-0309-Caustic",
         "input": {
-            "rho": 1.100, "mu_cP": 14.0, "W": 4000, "flow_unit": "kg/hr",
+            "rho": 1100.0, "mu_cP": 14.0, "W": 4000, "flow_unit": "kg/hr",
             "D_pipe_cm": 5.0, "D_screen_cm": 5.7, "L_cm": 13.8,
             "D_open_cm": 0.04, "Q_pct": 39.9, "P_pct": 51,
         },
@@ -169,7 +169,7 @@ CASES = [
     {
         "id": "SS4-ND031-PZSY-1304-Size1.5",
         "input": {
-            "rho": 0.951, "mu_cP": 0.248, "W": 1050, "flow_unit": "kg/hr",
+            "rho": 951.0, "mu_cP": 0.248, "W": 1050, "flow_unit": "kg/hr",
             "D_pipe_cm": 4.0, "D_screen_cm": 4.8, "L_cm": 12.0,
             "D_open_cm": 0.05, "Q_pct": 62.7, "P_pct": 51,
         },
@@ -204,7 +204,7 @@ CASES = [
     {
         "id": "SS5-ND031-PZSY-1311-NoMesh-mu450",
         "input": {
-            "rho": 1.025, "mu_cP": 450.0, "W": 9225, "flow_unit": "kg/hr",
+            "rho": 1025.0, "mu_cP": 450.0, "W": 9225, "flow_unit": "kg/hr",
             "D_pipe_cm": 8.0, "D_screen_cm": 9.0, "L_cm": 18.7,
             "D_open_cm": 0.2, "Q_pct": 100.0, "P_pct": 40.0,
         },
@@ -237,7 +237,7 @@ CASES = [
     {
         "id": "SS6-ND031-PZSY-1312-NoMesh-mu230",
         "input": {
-            "rho": 1.025, "mu_cP": 230.0, "W": 10250, "flow_unit": "kg/hr",
+            "rho": 1025.0, "mu_cP": 230.0, "W": 10250, "flow_unit": "kg/hr",
             "D_pipe_cm": 8.0, "D_screen_cm": 9.0, "L_cm": 18.7,
             "D_open_cm": 0.2, "Q_pct": 100.0, "P_pct": 40.0,
         },
@@ -269,7 +269,7 @@ CASES = [
     {
         "id": "SS7-ND031-PZSY-1319",
         "input": {
-            "rho": 0.951, "mu_cP": 0.245, "W": 4415, "flow_unit": "kg/hr",
+            "rho": 951.0, "mu_cP": 0.245, "W": 4415, "flow_unit": "kg/hr",
             "D_pipe_cm": 5.0, "D_screen_cm": 5.7, "L_cm": 13.8,
             "D_open_cm": 0.04, "Q_pct": 39.9, "P_pct": 67.0,
         },
@@ -303,7 +303,7 @@ CASES = [
     {
         "id": "SS8-ND031-PZSY-1616-W28443",
         "input": {
-            "rho": 0.998, "mu_cP": 1.0, "W": 28443, "flow_unit": "kg/hr",
+            "rho": 998.0, "mu_cP": 1.0, "W": 28443, "flow_unit": "kg/hr",
             "D_pipe_cm": 10.0, "D_screen_cm": 11.8, "L_cm": 22.2,
             "D_open_cm": 0.044, "Q_pct": 48.4, "P_pct": 67.0,
         },
@@ -337,7 +337,7 @@ CASES = [
     {
         "id": "SS9-ND031-PZSY-4311-Water",
         "input": {
-            "rho": 0.983, "mu_cP": 0.5, "W": 3932, "flow_unit": "kg/hr",
+            "rho": 983.0, "mu_cP": 0.5, "W": 3932, "flow_unit": "kg/hr",
             "D_pipe_cm": 5.0, "D_screen_cm": 5.7, "L_cm": 13.8,
             "D_open_cm": 0.044, "Q_pct": 48.4, "P_pct": 51.0,
         },
@@ -371,7 +371,7 @@ CASES = [
     {
         "id": "SS10-ND031-PZSY-4312-Water-W3953",
         "input": {
-            "rho": 0.941, "mu_cP": 0.3, "W": 3953, "flow_unit": "kg/hr",
+            "rho": 941.0, "mu_cP": 0.3, "W": 3953, "flow_unit": "kg/hr",
             "D_pipe_cm": 5.0, "D_screen_cm": 5.7, "L_cm": 13.8,
             "D_open_cm": 0.044, "Q_pct": 48.4, "P_pct": 51.0,
         },
@@ -404,7 +404,7 @@ CASES = [
     {
         "id": "SS11-ND031-PZSY-4312-1-W5100",
         "input": {
-            "rho": 0.941, "mu_cP": 0.3, "W": 5100, "flow_unit": "kg/hr",
+            "rho": 941.0, "mu_cP": 0.3, "W": 5100, "flow_unit": "kg/hr",
             "D_pipe_cm": 5.0, "D_screen_cm": 5.7, "L_cm": 13.8,
             "D_open_cm": 0.044, "Q_pct": 48.4, "P_pct": 67.0,
         },
@@ -438,7 +438,7 @@ CASES = [
     {
         "id": "SS12-ND031-PZSY-4312-2-W5600",
         "input": {
-            "rho": 0.983, "mu_cP": 0.3, "W": 5600, "flow_unit": "kg/hr",
+            "rho": 983.0, "mu_cP": 0.3, "W": 5600, "flow_unit": "kg/hr",
             "D_pipe_cm": 5.0, "D_screen_cm": 5.7, "L_cm": 13.8,
             "D_open_cm": 0.04, "Q_pct": 39.9, "P_pct": 67.0,
         },
@@ -472,7 +472,7 @@ CASES = [
     {
         "id": "SS13-ND031-PZSY-4312-2-W7250",
         "input": {
-            "rho": 0.983, "mu_cP": 0.3, "W": 7250, "flow_unit": "kg/hr",
+            "rho": 983.0, "mu_cP": 0.3, "W": 7250, "flow_unit": "kg/hr",
             "D_pipe_cm": 5.0, "D_screen_cm": 5.7, "L_cm": 13.8,
             "D_open_cm": 0.05, "Q_pct": 62.7, "P_pct": 67.0,
         },
@@ -506,7 +506,7 @@ CASES = [
     {
         "id": "SS14-ND031-PZSY-1616-W10200",
         "input": {
-            "rho": 0.998, "mu_cP": 1.0, "W": 10200, "flow_unit": "kg/hr",
+            "rho": 998.0, "mu_cP": 1.0, "W": 10200, "flow_unit": "kg/hr",
             "D_pipe_cm": 10.0, "D_screen_cm": 11.8, "L_cm": 22.2,
             "D_open_cm": 0.048, "Q_pct": 57.8, "P_pct": 67.0,
         },
@@ -590,7 +590,7 @@ def test_from_selection_basic() -> None:
 
 def test_invalid_strainer_model() -> None:
     resp = client.post("/calculate/from-selection", json={
-        "rho": 1.0, "mu_cP": 1.0, "W": 100, "flow_unit": "kg/hr",
+        "rho": 1000.0, "mu_cP": 1.0, "W": 100, "flow_unit": "kg/hr",
         "model": "INVALID-MODEL", "nps": "2",
         "mesh": 40, "swg": 38,
         "perforation": "Perf. : 12mm x Pitch: 14mm",
@@ -600,7 +600,7 @@ def test_invalid_strainer_model() -> None:
 
 def test_no_mesh_requires_d_open_override() -> None:
     resp = client.post("/calculate/from-selection", json={
-        "rho": 1.025, "mu_cP": 450.0, "W": 1000, "flow_unit": "kg/hr",
+        "rho": 1025.0, "mu_cP": 450.0, "W": 1000, "flow_unit": "kg/hr",
         "model": "FMSTR54-T", "nps": "3",
         "mesh": 0, "swg": 0,
         "perforation": "Perf. : 4mm x Pitch: 6mm",

@@ -91,7 +91,7 @@ print("="*70)
 
 # alpha near 0
 try:
-    r = calculate(rho=1.0, mu_cP=1.0, W=10, flow_unit='kg/hr',
+    r = calculate(rho=1000.0, mu_cP=1.0, W=10, flow_unit='kg/hr',
                   D_pipe_cm=5, D_screen_cm=5.7, L_cm=13.8,
                   D_open_cm=0.05, Q_pct=1.0, P_pct=1.0)
     record("NUMERIC", "alpha=0.0001 (Q=1%, P=1%)", PASS,
@@ -103,7 +103,7 @@ except Exception as e:
 
 # alpha = 1.0 (open screen)
 try:
-    r = calculate(rho=1.0, mu_cP=1.0, W=100, flow_unit='kg/hr',
+    r = calculate(rho=1000.0, mu_cP=1.0, W=100, flow_unit='kg/hr',
                   D_pipe_cm=5, D_screen_cm=5.7, L_cm=13.8,
                   D_open_cm=0.5, Q_pct=100, P_pct=100)
     k = r['clean_100pct']['K']
@@ -115,7 +115,7 @@ except Exception as e:
 
 # near-zero flow
 try:
-    r = calculate(rho=1.0, mu_cP=1.0, W=0.0001, flow_unit='kg/hr',
+    r = calculate(rho=1000.0, mu_cP=1.0, W=0.0001, flow_unit='kg/hr',
                   D_pipe_cm=5, D_screen_cm=5.7, L_cm=13.8,
                   D_open_cm=0.05, Q_pct=62.7, P_pct=51)
     record("NUMERIC", "Near-zero flow (W=0.0001 kg/hr)", PASS,
@@ -125,7 +125,7 @@ except Exception as e:
 
 # very high viscosity
 try:
-    r = calculate(rho=1.2, mu_cP=5000, W=2000, flow_unit='kg/hr',
+    r = calculate(rho=1200.0, mu_cP=5000, W=2000, flow_unit='kg/hr',
                   D_pipe_cm=8, D_screen_cm=9, L_cm=18.7,
                   D_open_cm=0.2, Q_pct=100, P_pct=40)
     re = r['clean_100pct']['Re']
@@ -136,7 +136,7 @@ except Exception as e:
 
 # very high Re (large flow, low viscosity)
 try:
-    r = calculate(rho=0.95, mu_cP=0.1, W=1_000_000, flow_unit='kg/hr',
+    r = calculate(rho=950.0, mu_cP=0.1, W=1_000_000, flow_unit='kg/hr',
                   D_pipe_cm=30, D_screen_cm=35, L_cm=70,
                   D_open_cm=0.5, Q_pct=62.7, P_pct=67)
     re = r['clean_100pct']['Re']
@@ -151,18 +151,19 @@ print("\n" + "="*70)
 print("3. FLOW UNIT EQUIVALENCE")
 print("="*70)
 
-rho = 0.951
+rho = 951.0
 W_kghr = 165
-W_m3hr = W_kghr / rho / 1000  # kg/hr ÷ rho ÷ 1000 = m³/hr ... but our CGS convention differs
+W_m3hr = W_kghr / (rho / 1000.0) / 1000  # kg/hr ÷ rho_cgs ÷ 1000 = m³/hr ... but our CGS convention differs
 
-# Q_vol from kg/hr: W / rho = 165/0.951 = 173.50
+# Q_vol from kg/hr: W / rho_cgs = 165/0.951 = 173.50
 # Q_vol from m3/hr: W * 1e6 / 3600
-q_kghr = volumetric_flow(W_kghr, 'kg/hr', rho)
+rho_cgs = rho / 1000.0
+q_kghr = volumetric_flow(W_kghr, 'kg/hr', rho_cgs)
 # True equivalent in m3/hr that gives same Q_vol:
 # W_m3hr * 1e6 / 3600 = W_kghr / rho
-# => W_m3hr = W_kghr / rho * 3600 / 1e6
-W_m3hr_eq = W_kghr / rho * 3600 / 1e6
-q_m3hr = volumetric_flow(W_m3hr_eq, 'm3/hr', rho)
+# => W_m3hr = W_kghr / rho_cgs * 3600 / 1e6
+W_m3hr_eq = W_kghr / rho_cgs * 3600 / 1e6
+q_m3hr = volumetric_flow(W_m3hr_eq, 'm3/hr', rho_cgs)
 match = abs(q_kghr - q_m3hr) < 1e-6
 record("UNITS", "kg/hr and m3/hr produce same Q_vol when equivalent flow given",
        PASS if match else FAIL, f"kg/hr Q={q_kghr:.6f}, m3/hr Q={q_m3hr:.6f}")
@@ -218,7 +219,7 @@ print("\n" + "="*70)
 print("5. PRESSURE UNIT CONVERSIONS")
 print("="*70)
 
-r = calculate(rho=0.951, mu_cP=0.248, W=165, flow_unit='kg/hr',
+r = calculate(rho=951.0, mu_cP=0.248, W=165, flow_unit='kg/hr',
               D_pipe_cm=2.5, D_screen_cm=2.6, L_cm=8.0,
               D_open_cm=0.05, Q_pct=62.7, P_pct=51)
 c100 = r['clean_100pct']
@@ -241,7 +242,7 @@ print("\n" + "="*70)
 print("6. FORMULA SELF-CONSISTENCY — K=0 when alpha=1")
 print("="*70)
 # When alpha=1: K = (1-1)/(C^2 * 1) = 0 => dP=0
-r = calculate(rho=1.0, mu_cP=1.0, W=100, flow_unit='kg/hr',
+r = calculate(rho=1000.0, mu_cP=1.0, W=100, flow_unit='kg/hr',
               D_pipe_cm=5, D_screen_cm=5.7, L_cm=13.8,
               D_open_cm=0.5, Q_pct=100, P_pct=100)
 dp = r['clean_100pct']['delta_P_cm_wc']
@@ -250,9 +251,9 @@ record("FORMULA", "dP=0 when alpha=1 (fully open screen)",
 
 # dP_50 >= dP_100 always (clogged is always worse)
 tested_cases = [
-    dict(rho=0.951, mu_cP=0.248, W=165, flow_unit='kg/hr', D_pipe_cm=2.5, D_screen_cm=2.6, L_cm=8.0, D_open_cm=0.05, Q_pct=62.7, P_pct=51),
-    dict(rho=1.1, mu_cP=14, W=4000, flow_unit='kg/hr', D_pipe_cm=5, D_screen_cm=5.7, L_cm=13.8, D_open_cm=0.04, Q_pct=39.9, P_pct=51),
-    dict(rho=1.025, mu_cP=450, W=9225, flow_unit='kg/hr', D_pipe_cm=8, D_screen_cm=9, L_cm=18.7, D_open_cm=0.2, Q_pct=100, P_pct=40),
+    dict(rho=951.0, mu_cP=0.248, W=165, flow_unit='kg/hr', D_pipe_cm=2.5, D_screen_cm=2.6, L_cm=8.0, D_open_cm=0.05, Q_pct=62.7, P_pct=51),
+    dict(rho=1100.0, mu_cP=14, W=4000, flow_unit='kg/hr', D_pipe_cm=5, D_screen_cm=5.7, L_cm=13.8, D_open_cm=0.04, Q_pct=39.9, P_pct=51),
+    dict(rho=1025.0, mu_cP=450, W=9225, flow_unit='kg/hr', D_pipe_cm=8, D_screen_cm=9, L_cm=18.7, D_open_cm=0.2, Q_pct=100, P_pct=40),
 ]
 all_ok = True
 for kw in tested_cases:
