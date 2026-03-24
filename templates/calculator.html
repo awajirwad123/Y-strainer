@@ -243,9 +243,9 @@
     <span class="sum-item"><span class="sum-label">P: </span><span class="sum-val" id="sum_P"></span></span>
     <span class="sum-item"><span class="sum-label">D: </span><span class="sum-val" id="sum_D"></span> cm</span>
     <span class="sum-item"><span class="sum-label">α: </span><span class="sum-val" id="sum_alpha"></span></span>
-    <span class="sum-item"><span class="sum-label">ρ: </span><span class="sum-val" id="sum_rho"></span> kg/m³</span>
-    <span class="sum-item"><span class="sum-label">μ: </span><span class="sum-val" id="sum_mu"></span> gm/cm·s</span>
-    <span class="sum-item"><span class="sum-label">Flow: </span><span class="sum-val" id="sum_flow"></span> cm³/sec</span>
+    <span class="sum-item"><span class="sum-label">&#961;: </span><span class="sum-val" id="sum_rho"></span> kg/m³</span>
+    <span class="sum-item"><span class="sum-label">μ: </span><span class="sum-val" id="sum_mu"></span> cP</span>
+    <span class="sum-item"><span class="sum-label">Flow: </span><span class="sum-val" id="sum_flow"></span> <span id="sum_flow_unit"></span></span>
   </div>
 
   <!-- ── Results section ────────────────────────────────────────────────────── -->
@@ -270,8 +270,6 @@
               <tr><td>Re</td><td id="r50_Re">—</td><td></td></tr>
               <tr class="c-row"><td>C</td><td id="r50_C">—</td><td></td></tr>
               <tr><td>K</td><td id="r50_K">—</td><td></td></tr>
-              <tr class="dp-row"><td>ΔP</td><td id="r50_dP_cm">—</td><td>cm WC</td></tr>
-              <tr class="dp-row"><td>ΔP</td><td id="r50_dP_in">—</td><td>inches of water</td></tr>
               <tr class="dp-row"><td>ΔP</td><td id="r50_dP_kg">—</td><td>kg/cm² (g)</td></tr>
             </table>
           </div>
@@ -291,8 +289,6 @@
               <tr><td>Re</td><td id="r100_Re">—</td><td></td></tr>
               <tr class="c-row"><td>C</td><td id="r100_C">—</td><td></td></tr>
               <tr><td>K</td><td id="r100_K">—</td><td></td></tr>
-              <tr class="dp-row"><td>ΔP</td><td id="r100_dP_cm">—</td><td>cm WC</td></tr>
-              <tr class="dp-row"><td>ΔP</td><td id="r100_dP_in">—</td><td>inches of water</td></tr>
               <tr class="dp-row"><td>ΔP</td><td id="r100_dP_kg">—</td><td>kg/cm² (g)</td></tr>
             </table>
           </div>
@@ -567,32 +563,29 @@ function displayResults(data, Q_pct, P_pct, D_open_cm, mu_cP) {
   $('sum_D').textContent     = D_open_cm;
   $('sum_alpha').textContent = data.alpha.toFixed(5);
   $('sum_rho').textContent   = $('rho').value;
-  $('sum_mu').textContent    = (mu_cP * 0.01).toFixed(5);
-  $('sum_flow').textContent  = data.Q_vol_cm3_s.toFixed(7);
+  $('sum_mu').textContent        = mu_cP;
+  $('sum_flow').textContent      = $('flow_W').value;
+  $('sum_flow_unit').textContent = $('flow_unit').value;
 
   // 50% clogged
-  $('r50_surf').textContent  = c50.surface_area_cm2.toFixed(7);
-  $('r50_net').textContent   = c50.net_surface_area_cm2.toFixed(9);
-  $('r50_ratio').textContent = c50.screening_area_ratio.toFixed(7);
-  $('r50_V').textContent     = c50.V_cm_s.toFixed(7);
-  $('r50_Re').textContent    = c50.Re.toFixed(5);
+  $('r50_surf').textContent  = c50.surface_area_cm2.toFixed(2);
+  $('r50_net').textContent   = c50.net_surface_area_cm2.toFixed(2);
+  $('r50_ratio').textContent = c50.screening_area_ratio.toFixed(2);
+  $('r50_V').textContent     = c50.V_cm_s.toFixed(3);
+  $('r50_Re').textContent    = c50.Re.toFixed(4);
   $('r50_C').textContent     = c50.C;
-  $('r50_K').textContent     = c50.K.toFixed(5);
-  $('r50_dP_cm').textContent = c50.delta_P_cm_wc.toFixed(5);
-  $('r50_dP_in').textContent = c50.delta_P_in_wc.toFixed(4);
-  $('r50_dP_kg').textContent = c50.delta_P_kg_cm2.toExponential(2);
+  $('r50_K').textContent     = c50.K.toFixed(2);
+  $('r50_dP_kg').textContent = c50.delta_P_kg_cm2.toFixed(5);
 
   // 100% clean
-  $('r100_surf').textContent  = c100.surface_area_cm2.toFixed(7);
-  $('r100_net').textContent   = c100.net_surface_area_cm2.toFixed(9);
-  $('r100_ratio').textContent = c100.screening_area_ratio.toFixed(7);
-  $('r100_V').textContent     = c100.V_cm_s.toFixed(7);
-  $('r100_Re').textContent    = c100.Re.toFixed(5);
+  $('r100_surf').textContent  = c100.surface_area_cm2.toFixed(2);
+  $('r100_net').textContent   = c100.net_surface_area_cm2.toFixed(2);
+  $('r100_ratio').textContent = c100.screening_area_ratio.toFixed(2);
+  $('r100_V').textContent     = c100.V_cm_s.toFixed(3);
+  $('r100_Re').textContent    = c100.Re.toFixed(4);
   $('r100_C').textContent     = c100.C;
-  $('r100_K').textContent     = c100.K.toFixed(5);
-  $('r100_dP_cm').textContent = c100.delta_P_cm_wc.toFixed(5);
-  $('r100_dP_in').textContent = c100.delta_P_in_wc.toFixed(5);
-  $('r100_dP_kg').textContent = c100.delta_P_kg_cm2.toExponential(2);
+  $('r100_K').textContent     = c100.K.toFixed(2);
+  $('r100_dP_kg').textContent = c100.delta_P_kg_cm2.toFixed(5);
 
   $('summary-band').style.display   = 'block';
   $('results-section').style.display = 'block';
