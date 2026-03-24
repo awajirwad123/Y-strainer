@@ -123,6 +123,7 @@ def calculate(
     A_pipe = math.pi / 4.0 * D_pipe_cm**2
     A100 = math.pi * D_screen_cm * L_cm
     A50 = A100 / 2.0
+    rho = rho / 1000.0 
     Q_vol = volumetric_flow(W, flow_unit, rho)
 
     return {

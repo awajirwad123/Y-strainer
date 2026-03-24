@@ -12,7 +12,7 @@ class CalculationRequest(BaseModel):
     """Direct calculation — all geometry values supplied explicitly."""
 
     # Fluid properties
-    rho: float = Field(..., gt=0, description="Fluid density (gm/cm³)")
+    rho: float = Field(..., gt=0, description="Fluid density (kg/m³)")
     mu_cP: float = Field(..., gt=0, description="Dynamic viscosity (cP)")
     W: float = Field(..., gt=0, description="Flow rate value (unit given by flow_unit)")
     flow_unit: Literal["kg/hr", "m3/hr"] = Field("kg/hr", description="Unit of W")
@@ -31,7 +31,7 @@ class CalculationRequest(BaseModel):
     project: Optional[str] = None
 
     model_config = {"json_schema_extra": {"example": {
-        "rho": 0.951, "mu_cP": 0.248, "W": 165, "flow_unit": "kg/hr",
+        "rho": 951.0, "mu_cP": 0.248, "W": 165, "flow_unit": "kg/hr",
         "D_pipe_cm": 2.5, "D_screen_cm": 2.6, "L_cm": 8.0,
         "D_open_cm": 0.05, "Q_pct": 62.7, "P_pct": 51,
         "tag_no": "ND031-PZSY-0303", "fluid_name": "Naphtha"
@@ -42,7 +42,7 @@ class LookupRequest(BaseModel):
     """Selection-based calculation — geometry resolved from model / mesh / perf selection."""
 
     # Fluid properties
-    rho: float = Field(..., gt=0, description="Fluid density (gm/cm³)")
+    rho: float = Field(..., gt=0, description="Fluid density (kg/m³)")
     mu_cP: float = Field(..., gt=0, description="Dynamic viscosity (cP)")
     W: float = Field(..., gt=0, description="Flow rate value")
     flow_unit: Literal["kg/hr", "m3/hr"] = Field("kg/hr")
