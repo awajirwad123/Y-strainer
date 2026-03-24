@@ -762,14 +762,14 @@ $('btn-export-pdf').addEventListener('click', () => {
         </tr>
       </thead>
       <tbody>
-        <tr><td>Surface area of the screen</td><td class="num">${n(c50.surface_area_cm2,4)}</td><td class="num">${n(c100.surface_area_cm2,4)}</td><td>cm&#178;</td></tr>
-        <tr><td>Net area of the screen</td><td class="num">${n(c50.net_surface_area_cm2,8)}</td><td class="num">${n(c100.net_surface_area_cm2,8)}</td><td>cm&#178;</td></tr>
-        <tr><td>Ratio</td><td class="num">${n(c50.screening_area_ratio,7)}</td><td class="num">${n(c100.screening_area_ratio,7)}</td><td></td></tr>
-        <tr><td>V</td><td class="num">${n(c50.V_cm_s,8)}</td><td class="num">${n(c100.V_cm_s,8)}</td><td>cm/sec</td></tr>
+        <tr><td>Surface area of the screen</td><td class="num">${n(c50.surface_area_cm2,2)}</td><td class="num">${n(c100.surface_area_cm2,2)}</td><td>cm&#178;</td></tr>
+        <tr><td>Net area of the screen</td><td class="num">${n(c50.net_surface_area_cm2,2)}</td><td class="num">${n(c100.net_surface_area_cm2,2)}</td><td>cm&#178;</td></tr>
+        <tr><td>Ratio</td><td class="num">${n(c50.screening_area_ratio,2)}</td><td class="num">${n(c100.screening_area_ratio,2)}</td><td></td></tr>
+        <tr><td>V</td><td class="num">${n(c50.V_cm_s,3)}</td><td class="num">${n(c100.V_cm_s,3)}</td><td>cm/sec</td></tr>
         <tr><td>Re</td><td class="num">${n(c50.Re,4)}</td><td class="num">${n(c100.Re,4)}</td><td></td></tr>
         <tr><td>C</td><td class="num">${c50.C}</td><td class="num">${c100.C}</td><td></td></tr>
         <tr class="g-row"><td>g</td><td class="num">9.81</td><td class="num">9.81</td><td>m/sec&#178;</td></tr>
-        <tr><td>K</td><td class="num">${n(c50.K,5)}</td><td class="num">${n(c100.K,5)}</td><td></td></tr>
+        <tr><td>K</td><td class="num">${n(c50.K,2)}</td><td class="num">${n(c100.K,2)}</td><td></td></tr>
         <tr class="dp-row"><td>&#916;P</td><td class="num">${n(c50.delta_P_kg_cm2,5)}</td><td class="num">${n(c100.delta_P_kg_cm2,5)}</td><td>Kg/cm&#178; (g)</td></tr>
       </tbody>
     </table>
