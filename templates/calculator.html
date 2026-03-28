@@ -739,6 +739,10 @@ $('btn-export-pdf').addEventListener('click', () => {
         <td class="pl">&#945;</td><td class="pv">: ${n(d.alpha,4)} mmSq</td><td class="psep"></td>
         <td class="prl">Flow</td><td>: ${i.W} ${i.flow_unit}</td>
       </tr>
+      <tr>
+        <td class="pl"></td><td class="pv"></td><td class="psep"></td>
+        <td class="prl">Rating</td><td>: ${i.rating ? '#' + i.rating : '\u2014'}</td>
+      </tr>
     </table>
   </div>
 
