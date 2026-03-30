@@ -91,19 +91,34 @@ def _load_tables() -> tuple:
     # Pipe Sizes — standard pipe schedule dimensions
     # Columns: sl_no, NPS_inch, Nominal_bore, OD, SchNoCS1, SchNoCS2, ID, DN, ...
     pipe_data: dict = {}
-    pipe_nps_data: dict = {}  # {nps_inch_str: dn_mm} — first unique occurrence wins
+    pipe_nps_data: dict = {}   # {nps_inch_str: dn_mm} — first unique occurrence wins
+    pipe_schedule_data: dict = {}  # {nps_inch_str: [(schedule_str, id_mm), ...]}
+    _SCH_SKIP = ("-", "\u2013", "\u2014")  # hyphens / dashes that mean "no named schedule"
     for row in wb["Pipe sizes"].iter_rows(min_row=2, values_only=True):
-        nps = str(row[1]).strip() if row[1] else None
-        nb  = str(row[2]).strip() if row[2] else None
-        sch = str(row[5]).strip() if row[5] else ""
+        nps  = str(row[1]).strip() if row[1] else None
+        nb   = str(row[2]).strip() if row[2] else None
+        sch1 = str(row[4]).strip() if row[4] else ""   # SchNoCS1 — named (STD, XS, XXS)
+        sch  = str(row[5]).strip() if row[5] else ""   # SchNoCS2 — numeric (5, 10, 40 …)
         id_val = row[6]
         dn_val = row[7]
         if id_val is not None:
             id_mm = float(id_val)
             if nps:
                 pipe_data[(nps, sch)] = id_mm
+                if sch1 and sch1 not in _SCH_SKIP:
+                    pipe_data[(nps, sch1)] = id_mm
             if nb:
                 pipe_data[(nb, sch)] = id_mm
+                if sch1 and sch1 not in _SCH_SKIP:
+                    pipe_data[(nb, sch1)] = id_mm
+            # Build per-NPS schedule list for Basket strainer Schedule dropdown
+            if nps:
+                if nps not in pipe_schedule_data:
+                    pipe_schedule_data[nps] = []
+                if sch and sch not in _SCH_SKIP:
+                    pipe_schedule_data[nps].append((sch, id_mm))
+                if sch1 and sch1 not in _SCH_SKIP:
+                    pipe_schedule_data[nps].append((sch1, id_mm))
         if nps and dn_val is not None and nps not in pipe_nps_data:
             try:
                 pipe_nps_data[nps] = float(dn_val)
@@ -122,11 +137,11 @@ def _load_tables() -> tuple:
     pr_class_data.sort()
 
     wb.close()
-    return mesh_data, perf_sheet_data, strainer_data, pipe_data, pipe_nps_data, pr_class_data
+    return mesh_data, perf_sheet_data, strainer_data, pipe_data, pipe_nps_data, pr_class_data, pipe_schedule_data
 
 
 try:
-    MESH_DATA, PERF_SHEET_DATA, STRAINER_DATA, PIPE_DATA, PIPE_NPS_DATA, PR_CLASS_DATA = _load_tables()
+    MESH_DATA, PERF_SHEET_DATA, STRAINER_DATA, PIPE_DATA, PIPE_NPS_DATA, PR_CLASS_DATA, PIPE_SCHEDULE_DATA = _load_tables()
 except Exception as _exc:
     raise RuntimeError(
         f"Failed to load reference tables from '{_EXCEL_PATH}': {_exc}"

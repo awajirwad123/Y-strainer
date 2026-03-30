@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Y Stainer Pressure Drop Calculator</title>
+  <title>Y Strainer Pressure Drop Calculator</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="/static/style.css" rel="stylesheet">
 </head>
@@ -12,7 +12,7 @@
 <!-- ── Navbar ──────────────────────────────────────────────────────────────── -->
 <nav class="app-navbar d-flex align-items-center justify-content-between">
   <div>
-    <div class="brand-title">⚙ Y STAINER — Pressure Drop Calculator</div>
+    <div class="brand-title">⚙ Y Strainer — Pressure Drop Calculator</div>
     <div class="brand-sub">Forbes Marshall Method &nbsp;|&nbsp; CGS Unit System</div>
   </div>
   <div class="d-flex align-items-center gap-3">
@@ -109,21 +109,7 @@
               </div>
             </div>
           </div>
-
-          <!-- Screen dimensions -->
-          <div class="row g-2 mb-2">
-            <div class="col-6">
-              <div class="form-label-sm">Length of Screen (cm)</div>
-              <input id="L_cm" type="number" class="form-control form-control-sm"
-                     step="0.001" min="0">
-            </div>
-            <div class="col-6">
-              <div class="form-label-sm">Diameter of Screen (cm)</div>
-              <input id="D_screen_cm" type="number" class="form-control form-control-sm"
-                     step="0.001" min="0">
-            </div>
-          </div>
-
+          
           <!-- Pipe NPS + Rating selection -->
           <div class="row g-2 mb-2">
             <div class="col-6">
@@ -137,6 +123,30 @@
               <select id="rating_select" class="form-select form-select-sm">
                 <option value="">— Select Rating —</option>
               </select>
+            </div>
+          </div>
+
+          <!-- Schedule selection — Basket strainer only -->
+          <div class="row g-2 mb-2" id="schedule-row" style="display:none">
+            <div class="col-6">
+              <div class="form-label-sm">Schedule</div>
+              <select id="schedule_select" class="form-select form-select-sm">
+                <option value="">— Select Schedule —</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Screen dimensions -->
+          <div class="row g-2 mb-2">
+            <div class="col-6">
+              <div class="form-label-sm">Length of Screen (cm)</div>
+              <input id="L_cm" type="number" class="form-control form-control-sm"
+                     step="0.001" min="0">
+            </div>
+            <div class="col-6">
+              <div class="form-label-sm">Diameter of Screen (cm)</div>
+              <input id="D_screen_cm" type="number" class="form-control form-control-sm"
+                     step="0.001" min="0">
             </div>
           </div>
 
@@ -312,18 +322,29 @@ let pipeNPSData = [];
 let prClassData = [];
 let meshData = [];
 let perfData = [];
+let pipeScheduleData = {};   // { nps_str: [{schedule, id_mm}, ...] }
 let _lastResult = null;
 let _lastInputs = null;
 
 // ── Load lookup data on page load ────────────────────────────────────────────
 async function loadLookups() {
   try {
-    [pipeNPSData, prClassData, meshData, perfData] = await Promise.all([
+    const [npsRes, prRes, meshRes, perfRes, schedRes] = await Promise.all([
       fetch('/lookup/pipe-nps').then(r => r.json()),
       fetch('/lookup/pr-class').then(r => r.json()),
       fetch('/lookup/meshes').then(r => r.json()),
       fetch('/lookup/perforations').then(r => r.json()),
+      fetch('/lookup/pipe-schedules').then(r => r.json()),
     ]);
+    pipeNPSData = npsRes;
+    prClassData = prRes;
+    meshData    = meshRes;
+    perfData    = perfRes;
+    // Build schedule lookup indexed by NPS
+    schedRes.forEach(s => {
+      if (!pipeScheduleData[s.nps]) pipeScheduleData[s.nps] = [];
+      pipeScheduleData[s.nps].push({ schedule: s.schedule, id_mm: s.id_mm });
+    });
     populatePipeNPS();
     populatePRClass();
     populateMesh();
@@ -355,12 +376,73 @@ function populatePRClass() {
   });
 }
 
-// ── On NPS change → auto-fill Pipe ID ────────────────────────────────────
+// ── Helpers for strainer type and schedule ───────────────────────────────────
+function isBasketSelected() {
+  return document.querySelector('input[name="strainer_type"]:checked')?.value === 'Basket';
+}
+
+function populateScheduleDropdown(npsInch) {
+  const sel = $('schedule_select');
+  sel.innerHTML = '<option value="">— Select Schedule —</option>';
+  const entries = pipeScheduleData[npsInch] || [];
+  entries.forEach(e => {
+    const opt = document.createElement('option');
+    opt.value = JSON.stringify({ schedule: e.schedule, id_mm: e.id_mm });
+    opt.textContent = e.schedule + '  (ID: ' + e.id_mm + ' mm)';
+    sel.appendChild(opt);
+  });
+}
+
+// ── On NPS change → auto-fill Pipe ID (or populate Schedule for Basket) ───────
 $('pipe_nps_select').addEventListener('change', () => {
   const val = $('pipe_nps_select').value;
+  if (isBasketSelected()) {
+    $('D_pipe_cm').value = '';
+    $('disp_A_pipe').value = '';
+    if (val) {
+      populateScheduleDropdown(JSON.parse(val).nps_inch);
+    } else {
+      $('schedule_select').innerHTML = '<option value="">— Select Schedule —</option>';
+    }
+  } else {
+    if (val) {
+      const p = JSON.parse(val);
+      $('D_pipe_cm').value = (p.dn_mm / 10).toFixed(3);
+      updatePipeArea();
+    } else {
+      $('D_pipe_cm').value = '';
+      $('disp_A_pipe').value = '';
+    }
+  }
+});
+
+// ── Show/hide Schedule row when strainer type changes ────────────────────────
+document.querySelectorAll('input[name="strainer_type"]').forEach(radio => {
+  radio.addEventListener('change', () => {
+    const basket = isBasketSelected();
+    $('schedule-row').style.display = basket ? '' : 'none';
+    const npsVal = $('pipe_nps_select').value;
+    if (basket) {
+      $('D_pipe_cm').value = '';
+      $('disp_A_pipe').value = '';
+      $('schedule_select').innerHTML = '<option value="">— Select Schedule —</option>';
+      if (npsVal) populateScheduleDropdown(JSON.parse(npsVal).nps_inch);
+    } else {
+      if (npsVal) {
+        const p = JSON.parse(npsVal);
+        $('D_pipe_cm').value = (p.dn_mm / 10).toFixed(3);
+        updatePipeArea();
+      }
+    }
+  });
+});
+
+// ── On Schedule change → auto-fill Pipe ID ────────────────────────────────────
+$('schedule_select').addEventListener('change', () => {
+  const val = $('schedule_select').value;
   if (val) {
-    const p = JSON.parse(val);
-    $('D_pipe_cm').value = (p.dn_mm / 10).toFixed(3);
+    const s = JSON.parse(val);
+    $('D_pipe_cm').value = (s.id_mm / 10).toFixed(3);
     updatePipeArea();
   } else {
     $('D_pipe_cm').value = '';
@@ -804,7 +886,7 @@ $('btn-clear').addEventListener('click', () => {
    'L_cm','D_screen_cm','D_pipe_cm','D_open_cm','Q_pct','P_pct',
    'disp_A100','disp_A50','disp_A_pipe','disp_alpha'
   ].forEach(id => $(id).value = '');
-  ['pipe_nps_select','rating_select','mesh_select','perf_select'].forEach(id => $(id).selectedIndex = 0);
+  ['pipe_nps_select','rating_select','mesh_select','perf_select','schedule_select'].forEach(id => $(id).selectedIndex = 0);
   $('flow_unit').value = 'kg/hr';
   $('summary-band').style.display    = 'none';
   $('results-section').style.display = 'none';

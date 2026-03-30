@@ -26,10 +26,11 @@ def lookup_C(Re: float) -> float:
     """
     if Re < 21:
         return math.sqrt(Re) / 10.0
+    Re_int = int(Re)  # table rows use integer bounds; truncate to avoid fractional gaps
     for lo, hi, c in C_VALUE_TABLE:
-        if hi is None and Re >= lo:
+        if hi is None and Re_int >= lo:
             return c
-        if hi is not None and lo <= Re <= hi:
+        if hi is not None and lo <= Re_int <= hi:
             return c
     raise ValueError(f"Reynolds number {Re:.4f} is outside the C value table range")
 

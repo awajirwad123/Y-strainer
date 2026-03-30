@@ -607,3 +607,417 @@ def test_no_mesh_requires_d_open_override() -> None:
         # D_open_cm_override intentionally omitted
     })
     assert resp.status_code == 422
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# BASKET STRAINER TESTS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+import math as _math
+from calculator import lookup_C as _lookup_C
+
+
+# ── Unit tests: lookup_C fractional-Re boundary fix ───────────────────────────
+
+def test_lookup_c_re_below_21_uses_formula() -> None:
+    """Re < 21 must use C = sqrt(Re)/10, not the table."""
+    for re in [0.5, 1.0, 4.0, 10.0, 20.0, 20.9]:
+        assert abs(_lookup_C(re) - _math.sqrt(re) / 10.0) < 1e-10, f"Re={re}"
+
+
+def test_lookup_c_re_at_21_uses_table() -> None:
+    """Re = 21 is the first table entry — must return the table value exactly, not the formula."""
+    c = _lookup_C(21.0)
+    assert c == 0.45  # (21, 25, 0.45) from C_VALUE_TABLE
+    # formula would give sqrt(21)/10 ≈ 0.4583; table gives 0.45 exactly
+    assert c == 0.45
+
+
+def test_lookup_c_fractional_re_89_8925() -> None:
+    """Re=89.8925 was the actual production failure; int(89.8925)=89 → C=0.75."""
+    assert _lookup_C(89.8925) == 0.75
+
+
+def test_lookup_c_fractional_re_near_each_boundary() -> None:
+    """All fractional Re values that could slip between integer table bounds."""
+    boundary_pairs = [
+        (89.0,  0.75),   # range (80, 89)
+        (89.1,  0.75),   # still int=89, same range
+        (89.9,  0.75),   # still int=89, same range
+        (90.0,  0.77),   # int=90, range (90, 99)
+        (90.5,  0.77),
+        (99.9,  0.77),   # int=99, range (90, 99)
+        (100.0, 0.80),   # int=100, range (100, 124)
+        (174.9, 0.90),   # int=174, range (150, 174)
+        (175.0, 0.95),   # int=175, range (175, 200)
+        (200.9, 0.95),   # int=200, range (175, 200)
+        (201.0, 1.00),   # int=201, range (201, 300)
+    ]
+    for re, expected_c in boundary_pairs:
+        got = _lookup_C(re)
+        assert got == expected_c, f"Re={re}: expected C={expected_c}, got C={got}"
+
+
+def test_lookup_c_no_exception_for_all_integer_re() -> None:
+    """Every integer Re from 21 to 6000 must resolve without raising."""
+    for re in range(21, 6001):
+        _lookup_C(float(re))  # must not raise
+
+
+# ── /lookup/pipe-schedules endpoint ───────────────────────────────────────────
+
+def test_lookup_pipe_schedules_returns_200() -> None:
+    resp = client.get("/lookup/pipe-schedules")
+    assert resp.status_code == 200
+
+
+def test_lookup_pipe_schedules_structure() -> None:
+    resp = client.get("/lookup/pipe-schedules")
+    data = resp.json()
+    assert len(data) > 0
+    first = data[0]
+    assert "nps" in first
+    assert "schedule" in first
+    assert "id_mm" in first
+    assert isinstance(first["id_mm"], (int, float))
+    assert isinstance(first["nps"], str)
+    assert isinstance(first["schedule"], str)
+
+
+def test_lookup_pipe_schedules_no_blank_or_dash() -> None:
+    """Blank, '-', '–', '—' schedule values must be excluded from the API."""
+    resp = client.get("/lookup/pipe-schedules")
+    data = resp.json()
+    forbidden = {"-", "\u2013", "\u2014", ""}
+    for entry in data:
+        assert entry["schedule"] not in forbidden, (
+            f"Blank/dash schedule for NPS={entry['nps']}: '{entry['schedule']}'"
+        )
+
+
+def test_lookup_pipe_schedules_all_ids_positive() -> None:
+    """Every pipe ID returned by the API must be > 0."""
+    resp = client.get("/lookup/pipe-schedules")
+    data = resp.json()
+    for entry in data:
+        assert entry["id_mm"] > 0, (
+            f"Non-positive ID for NPS={entry['nps']} sch={entry['schedule']}: {entry['id_mm']}"
+        )
+
+
+def test_lookup_pipe_schedules_nps_half_inch_has_both_named_and_numeric() -> None:
+    """NPS 1/2 must expose both named (STD, XS, XXS) and numeric schedules."""
+    resp = client.get("/lookup/pipe-schedules")
+    data = resp.json()
+    nps_half = [e for e in data if e["nps"] == "1/2"]
+    assert len(nps_half) > 0, "No schedule entries for NPS 1/2"
+    schedules = {e["schedule"] for e in nps_half}
+    assert len(schedules & {"STD", "XS", "XXS"}) > 0, (
+        f"Missing named schedules for 1/2\": got {schedules}"
+    )
+    assert len(schedules & {"5", "10", "30", "40", "80", "160"}) > 0, (
+        f"Missing numeric schedules for 1/2\": got {schedules}"
+    )
+
+
+def test_lookup_pipe_schedules_nps_three_quarter_present() -> None:
+    """NPS 3/4 (or unicode fraction variant) must have schedule entries."""
+    resp = client.get("/lookup/pipe-schedules")
+    data = resp.json()
+    # Excel may encode as "3/4" or "3⁄4" (unicode fraction slash)
+    entries = [e for e in data if e["nps"] in ("3/4", "3\u20444")]
+    assert len(entries) > 0, "No schedule entries for 3/4 NPS"
+
+
+def test_lookup_pipe_schedules_has_multiple_nps_sizes() -> None:
+    """API must return schedules for more than one NPS size."""
+    resp = client.get("/lookup/pipe-schedules")
+    data = resp.json()
+    nps_set = {e["nps"] for e in data}
+    assert len(nps_set) >= 2, f"Expected ≥2 NPS sizes, got: {nps_set}"
+
+
+# ── Basket strainer — calculation smoke tests ─────────────────────────────────
+
+def test_basket_end_to_end_schedule_to_calculate() -> None:
+    """Fetch schedule for any NPS with STD entry, derive pipe ID, run /calculate."""
+    resp = client.get("/lookup/pipe-schedules")
+    assert resp.status_code == 200
+    schedules = resp.json()
+    std_entries = [e for e in schedules if e["schedule"] == "STD"]
+    assert len(std_entries) > 0, "No STD schedule entries found"
+
+    entry = std_entries[0]
+    d_pipe_cm = entry["id_mm"] / 10.0
+
+    resp = client.post("/calculate", json={
+        "rho": 998.0,
+        "mu_cP": 1.0,
+        "W": 8000,
+        "flow_unit": "kg/hr",
+        "D_pipe_cm": d_pipe_cm,
+        "D_screen_cm": d_pipe_cm * 1.15,
+        "L_cm": 20.0,
+        "D_open_cm": 0.05,
+        "Q_pct": 62.7,
+        "P_pct": 51.0,
+        "tag_no": "BSKT-001",
+        "fluid_name": "Water",
+    })
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["tag_no"] == "BSKT-001"
+    assert data["fluid_name"] == "Water"
+    assert data["clean_100pct"]["delta_P_kg_cm2"] > 0
+    assert data["clogged_50pct"]["delta_P_kg_cm2"] > data["clean_100pct"]["delta_P_kg_cm2"]
+
+
+def test_basket_re_fractional_boundary_does_not_500() -> None:
+    """Confirm the Re≈89.89 production failure is resolved (was HTTP 500 before fix)."""
+    # ss2 case re-used with reduced flow to drive Re into the 80–90 range
+    resp = client.post("/calculate", json={
+        "rho": 998.0,
+        "mu_cP": 1.2,
+        "W": 3200,
+        "flow_unit": "kg/hr",
+        "D_pipe_cm": 4.0,
+        "D_screen_cm": 4.8,
+        "L_cm": 18.0,
+        "D_open_cm": 0.05,
+        "Q_pct": 62.7,
+        "P_pct": 51.0,
+    })
+    assert resp.status_code == 200, f"Unexpected HTTP {resp.status_code}: {resp.text}"
+
+
+def test_basket_high_viscosity_re_below_21() -> None:
+    """Very viscous fluid → Re < 21 for both conditions → C = sqrt(Re)/10 path."""
+    resp = client.post("/calculate", json={
+        "rho": 1070.0,
+        "mu_cP": 350.0,
+        "W": 800,
+        "flow_unit": "kg/hr",
+        "D_pipe_cm": 3.0,
+        "D_screen_cm": 3.5,
+        "L_cm": 12.0,
+        "D_open_cm": 0.2,
+        "Q_pct": 100.0,
+        "P_pct": 40.0,
+    })
+    assert resp.status_code == 200
+    data = resp.json()
+    c50  = data["clogged_50pct"]
+    c100 = data["clean_100pct"]
+    assert c100["Re"] < 21
+    assert c50["Re"] < 21
+    assert c100["delta_P_kg_cm2"] > 0
+    assert c50["delta_P_kg_cm2"] > c100["delta_P_kg_cm2"]
+
+
+def test_basket_m3hr_flow_unit() -> None:
+    """Basket strainer with m³/hr input — must not raise and must produce positive ΔP."""
+    resp = client.post("/calculate", json={
+        "rho": 900.0,
+        "mu_cP": 2.0,
+        "W": 0.3,
+        "flow_unit": "m3/hr",
+        "D_pipe_cm": 2.0,
+        "D_screen_cm": 2.5,
+        "L_cm": 10.0,
+        "D_open_cm": 0.04,
+        "Q_pct": 39.9,
+        "P_pct": 51.0,
+    })
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["clean_100pct"]["delta_P_kg_cm2"] > 0
+    assert data["clogged_50pct"]["delta_P_kg_cm2"] > data["clean_100pct"]["delta_P_kg_cm2"]
+
+
+# ── Basket strainer — parametrized calculation cases with exact values ─────────
+#
+# Expected values were produced by running the checked-in formula (calculator.py)
+# directly. Tolerance: 0.5% for geometry/velocity, 1% for ΔP.
+
+BASKET_CASES = [
+    # ──────────────────────────────────────────────────────────────────────────
+    # BS1  Water | 2" pipe | 40×SWG36 mesh (Q=48.4%) | Perf 51% | kg/hr
+    # Follows the same formula chain as Y-type; validates Basket pipe-ID path.
+    # ──────────────────────────────────────────────────────────────────────────
+    {
+        "id": "BS1-Water-2inch-sch40",
+        "input": {
+            "rho": 998.0, "mu_cP": 1.0, "W": 5000, "flow_unit": "kg/hr",
+            "D_pipe_cm": 5.0, "D_screen_cm": 5.7, "L_cm": 13.8,
+            "D_open_cm": 0.044, "Q_pct": 48.4, "P_pct": 51.0,
+        },
+        "shared": {
+            "alpha": 0.24684,
+            "A_pipe_cm2": 19.63495,
+            "A_screen_gross_cm2": 247.11768,
+            "Q_vol_cm3_s": 5010.02004,
+        },
+        "clean": {
+            "net_surface_area_cm2": 60.99853,
+            "screening_area_ratio": 3.10663,
+            "V_cm_s": 20.27382,
+            "Re": 360.66444,
+            "C": 1.04,
+            "K": 14.24952,
+            "delta_P_kg_cm2": 0.002979,
+        },
+        "clogged": {
+            "net_surface_area_cm2": 30.49926,
+            "screening_area_ratio": 1.55331,
+            "V_cm_s": 40.54765,
+            "Re": 721.32889,
+            "C": 1.25,
+            "K": 9.86386,
+            "delta_P_kg_cm2": 0.008249,
+        },
+    },
+    # ──────────────────────────────────────────────────────────────────────────
+    # BS2  High-viscosity fluid (Re < 21 → C = sqrt(Re)/10)
+    # Validates the low-Re formula branch used for viscous basket applications.
+    # ──────────────────────────────────────────────────────────────────────────
+    {
+        "id": "BS2-HighViscosity-Re<21",
+        "input": {
+            "rho": 1070.0, "mu_cP": 350.0, "W": 800, "flow_unit": "kg/hr",
+            "D_pipe_cm": 3.0, "D_screen_cm": 3.5, "L_cm": 12.0,
+            "D_open_cm": 0.2, "Q_pct": 100.0, "P_pct": 40.0,
+        },
+        "shared": {
+            "alpha": 0.40000,
+            "A_pipe_cm2": 7.06858,
+            "A_screen_gross_cm2": 131.94689,
+            "Q_vol_cm3_s": 747.66355,
+        },
+        "clean": {
+            "V_cm_s": 5.66640,
+            "Re": 0.86615,
+            "K": 606.13103,
+            "delta_P_cm_wc": 10.613665,
+        },
+        "clogged": {
+            "V_cm_s": 11.33280,
+            "Re": 1.73230,
+            "K": 303.06552,
+            "delta_P_cm_wc": 21.227331,
+        },
+    },
+    # ──────────────────────────────────────────────────────────────────────────
+    # BS3  m³/hr input | medium viscosity | fractional-Re boundary region
+    # ──────────────────────────────────────────────────────────────────────────
+    {
+        "id": "BS3-m3hr-FractionalRe",
+        "input": {
+            "rho": 900.0, "mu_cP": 2.0, "W": 0.3, "flow_unit": "m3/hr",
+            "D_pipe_cm": 2.0, "D_screen_cm": 2.5, "L_cm": 10.0,
+            "D_open_cm": 0.04, "Q_pct": 39.9, "P_pct": 51.0,
+        },
+        "shared": {
+            "alpha": 0.20349,
+            "A_pipe_cm2": 3.14159,
+            "A_screen_gross_cm2": 78.53982,
+            "Q_vol_cm3_s": 83.33333,
+        },
+        "clean": {
+            "V_cm_s": 1.06103,
+            "Re": 9.38552,
+            "K": 246.65463,
+            "delta_P_cm_wc": 0.127377,
+        },
+        "clogged": {
+            "V_cm_s": 2.12207,
+            "Re": 18.77104,
+            "K": 123.32731,
+            "delta_P_cm_wc": 0.254754,
+        },
+    },
+]
+
+
+@pytest.mark.parametrize("case", BASKET_CASES, ids=[c["id"] for c in BASKET_CASES])
+def test_basket_calculate(case: dict) -> None:
+    _run(case)
+
+
+# ── Basket strainer — input validation ────────────────────────────────────────
+
+def test_basket_validation_missing_rho() -> None:
+    resp = client.post("/calculate", json={
+        "mu_cP": 1.0, "W": 5000, "flow_unit": "kg/hr",
+        "D_pipe_cm": 5.0, "D_screen_cm": 5.7, "L_cm": 13.8,
+        "D_open_cm": 0.044, "Q_pct": 48.4, "P_pct": 51.0,
+    })
+    assert resp.status_code == 422
+
+
+def test_basket_validation_zero_density() -> None:
+    resp = client.post("/calculate", json={
+        "rho": 0.0, "mu_cP": 1.0, "W": 5000, "flow_unit": "kg/hr",
+        "D_pipe_cm": 5.0, "D_screen_cm": 5.7, "L_cm": 13.8,
+        "D_open_cm": 0.044, "Q_pct": 48.4, "P_pct": 51.0,
+    })
+    assert resp.status_code == 422
+
+
+def test_basket_validation_zero_viscosity() -> None:
+    resp = client.post("/calculate", json={
+        "rho": 998.0, "mu_cP": 0.0, "W": 5000, "flow_unit": "kg/hr",
+        "D_pipe_cm": 5.0, "D_screen_cm": 5.7, "L_cm": 13.8,
+        "D_open_cm": 0.044, "Q_pct": 48.4, "P_pct": 51.0,
+    })
+    assert resp.status_code == 422
+
+
+def test_basket_validation_invalid_flow_unit() -> None:
+    resp = client.post("/calculate", json={
+        "rho": 998.0, "mu_cP": 1.0, "W": 5000, "flow_unit": "L/hr",
+        "D_pipe_cm": 5.0, "D_screen_cm": 5.7, "L_cm": 13.8,
+        "D_open_cm": 0.044, "Q_pct": 48.4, "P_pct": 51.0,
+    })
+    assert resp.status_code == 422
+
+
+def test_basket_validation_q_pct_over_100() -> None:
+    resp = client.post("/calculate", json={
+        "rho": 998.0, "mu_cP": 1.0, "W": 5000, "flow_unit": "kg/hr",
+        "D_pipe_cm": 5.0, "D_screen_cm": 5.7, "L_cm": 13.8,
+        "D_open_cm": 0.044, "Q_pct": 105.0, "P_pct": 51.0,
+    })
+    assert resp.status_code == 422
+
+
+def test_basket_metadata_round_trips() -> None:
+    """tag_no and fluid_name must be returned unchanged in the response."""
+    resp = client.post("/calculate", json={
+        "rho": 998.0, "mu_cP": 1.0, "W": 5000, "flow_unit": "kg/hr",
+        "D_pipe_cm": 5.0, "D_screen_cm": 5.7, "L_cm": 13.8,
+        "D_open_cm": 0.044, "Q_pct": 48.4, "P_pct": 51.0,
+        "tag_no": "BSKT-TEST-42",
+        "fluid_name": "Cooling Water",
+    })
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["tag_no"] == "BSKT-TEST-42"
+    assert data["fluid_name"] == "Cooling Water"
+
+
+def test_basket_clogged_dp_always_greater_than_clean() -> None:
+    """50% clogged ΔP must always exceed 100% clean ΔP for any valid input."""
+    test_inputs = [
+        {"rho": 998.0,  "mu_cP": 1.0,   "W": 5000,  "D_pipe_cm": 5.0,  "D_screen_cm": 5.7,  "L_cm": 13.8, "D_open_cm": 0.044, "Q_pct": 48.4, "P_pct": 51.0},
+        {"rho": 1100.0, "mu_cP": 14.0,  "W": 4000,  "D_pipe_cm": 5.0,  "D_screen_cm": 5.7,  "L_cm": 13.8, "D_open_cm": 0.04,  "Q_pct": 39.9, "P_pct": 51.0},
+        {"rho": 1070.0, "mu_cP": 350.0, "W": 800,   "D_pipe_cm": 3.0,  "D_screen_cm": 3.5,  "L_cm": 12.0, "D_open_cm": 0.2,   "Q_pct": 100.0,"P_pct": 40.0},
+        {"rho": 900.0,  "mu_cP": 2.0,   "W": 0.3,   "D_pipe_cm": 2.0,  "D_screen_cm": 2.5,  "L_cm": 10.0, "D_open_cm": 0.04,  "Q_pct": 39.9, "P_pct": 51.0},
+    ]
+    for i, inp in enumerate(test_inputs):
+        payload = {**inp, "flow_unit": "kg/hr" if inp["W"] > 1 else "m3/hr"}
+        resp = client.post("/calculate", json=payload)
+        assert resp.status_code == 200, f"Input #{i} failed: {resp.text}"
+        data = resp.json()
+        assert data["clogged_50pct"]["delta_P_kg_cm2"] > data["clean_100pct"]["delta_P_kg_cm2"], (
+            f"Input #{i}: clogged ΔP not greater than clean ΔP"
+        )

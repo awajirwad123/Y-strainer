@@ -129,5 +129,11 @@ class PipeNPSOption(BaseModel):
     dn_mm: float
 
 
+class PipeScheduleOption(BaseModel):
+    nps: str
+    schedule: str
+    id_mm: float
+
+
 class PRClassOption(BaseModel):
     rating: int

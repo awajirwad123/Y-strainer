@@ -41,10 +41,11 @@ from schemas import (
     PerfOption,
     StrainerSizeOption,
     PipeNPSOption,
+    PipeScheduleOption,
     PRClassOption,
 )
 from calculator import calculate
-from config import MESH_DATA, PERF_SHEET_DATA, STRAINER_DATA, PIPE_NPS_DATA, PR_CLASS_DATA
+from config import MESH_DATA, PERF_SHEET_DATA, STRAINER_DATA, PIPE_NPS_DATA, PR_CLASS_DATA, PIPE_SCHEDULE_DATA
 from database import init_db, create_user, get_user_by_username, verify_password
 
 # ── Session secret ────────────────────────────────────────────────────────────
@@ -330,3 +331,18 @@ def list_pipe_nps() -> list[PipeNPSOption]:
 def list_pr_class() -> list[PRClassOption]:
     """Returns all pressure rating classes (e.g. 150, 300, 600, 900, 1500, 2500)."""
     return [PRClassOption(rating=r) for r in PR_CLASS_DATA]
+
+
+@app.get(
+    "/lookup/pipe-schedules",
+    response_model=list[PipeScheduleOption],
+    summary="List pipe schedules (SchNoCS1 + SchNoCS2) for all NPS sizes",
+    tags=["lookup"],
+)
+def list_pipe_schedules() -> list[PipeScheduleOption]:
+    """Returns all (NPS, schedule, pipe ID) entries for the Basket strainer Schedule dropdown."""
+    return [
+        PipeScheduleOption(nps=nps, schedule=sch, id_mm=id_mm)
+        for nps, entries in PIPE_SCHEDULE_DATA.items()
+        for sch, id_mm in entries
+    ]
