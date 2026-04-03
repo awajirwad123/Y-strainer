@@ -120,6 +120,37 @@ Where:
 
 **Note:** `L_cm` must be > 1.3 × `D_screen_cm` for the straight cylinder section to have positive length.
 
+#### 3d. T-Type (Boat type screen)
+Two flat rectangular panels (V-prism at 90°) plus a quarter-sphere end cap:
+
+| Component | Formula | Excel Cell |
+|-----------|---------|------------|
+| **(2) Two flat rectangular panels** | $2 \times L \times B$ | `=2*(B10*B9)` |
+| **(1) Quarter-sphere cap** | $\pi \times r^2$ | `=3.142*r^2` |
+
+Where:
+- $L = H - r = H - d/2$ (panel length = total height minus sphere radius)
+- $B = d / \sqrt{2}$ (panel width — each panel sits at 45°, so effective width = $d \cos 45°$)
+
+$$A_{screen} = 2(H - d/2)(d/\sqrt{2}) + \pi(d/2)^2$$
+
+> **Validated against Excel (using math.pi):**
+> - d = 39.2 cm, H = 82.8 cm, r = 19.6 cm
+> - B = 39.2/√2 = 27.71859 cm
+> - L = 82.8 − 19.6 = 63.2 cm
+> - A_rect = 2 × 63.2 × 27.71859 = **3503.63 cm²**
+> - A_sphere = π × 19.6² = **1206.88 cm²**
+> - **Total = 4710.51 cm²** (Excel gives 4710.66 cm² using 3.142 — 0.03% difference)
+
+**Area formula summary across strainer types** (same d and L):
+
+| Type | Formula | Notes |
+|------|---------|-------|
+| Y-Type | $\pi d L$ | Full cylinder |
+| Basket | $\pi d L + \pi r^2$ | Cylinder + closed bottom |
+| T-Type (Monkey) | $\pi d(L-1.3d) + 0.644\pi d(0.8d) + \pi r^2$ | Shorter cylinder + transition + cap |
+| T-Type (Boat) | $2(L-r)(d/\sqrt{2}) + \pi r^2$ | Two flat V-panels + cap |
+
 **50% clogged** (all types):
 $$A_{screen,50\%} = \frac{A_{screen}}{2}$$
 
@@ -286,7 +317,10 @@ if strainer_type == "Basket":
 elif strainer_type == "T-Type (Monkey)":
     B            = 0.8 × D_screen
     A_screen_100 = π×D_screen×(L - 1.3×D_screen) + 0.644×π×D_screen×B + π×(D_screen/2)²
-else:  # Y-Type, T-Type (Boat)
+elif strainer_type == "T-Type (Boat)":
+    r            = D_screen / 2
+    A_screen_100 = 2×(L - r)×(D_screen/√2) + π×r²
+else:  # Y-Type
     A_screen_100 = π × D_screen × L
 A_screen_50  = A_screen_100 / 2
 

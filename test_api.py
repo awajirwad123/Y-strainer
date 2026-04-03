@@ -847,6 +847,215 @@ def test_ttype_monkey_calculate(case: dict) -> None:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# T-TYPE (BOAT) STRAINER TESTS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _boat_area(d_cm: float, h_cm: float) -> float:
+    """Reference implementation of T-Type (Boat) screen area (cm²)."""
+    r = d_cm / 2.0
+    return 2.0 * (h_cm - r) * (d_cm / _math.sqrt(2)) + _math.pi * r ** 2
+
+
+def test_ttype_boat_area_formula_excel_example() -> None:
+    """Verify Boat area formula on the Excel-validated example.
+
+    Excel (3.142): d=392mm, H=828mm → 471066.00 mm² = 4710.66 cm²
+    Code (math.pi):                  → 4710.50 cm²
+    Allowed deviation < 0.1% (Excel uses 3.142 vs math.pi).
+    """
+    d_cm = 39.2   # 392 mm
+    h_cm = 82.8   # 828 mm
+    area = _boat_area(d_cm, h_cm)
+    excel_cm2 = 4710.66
+    rel_err = abs(area - excel_cm2) / excel_cm2
+    assert rel_err < 0.001, (
+        f"Boat area={area:.2f} cm², Excel={excel_cm2} cm², rel_err={rel_err*100:.3f}%"
+    )
+
+
+def test_ttype_boat_area_components() -> None:
+    """Each component of the Boat area must be positive for well-formed geometry."""
+    d_cm, h_cm = 39.2, 82.8
+    r = d_cm / 2.0
+    A_rect   = 2.0 * (h_cm - r) * (d_cm / _math.sqrt(2))
+    A_sphere = _math.pi * r ** 2
+    assert A_rect > 0,   f"Rectangular panels must be positive; got {A_rect}"
+    assert A_sphere > 0, f"Quarter sphere must be positive; got {A_sphere}"
+    assert abs(A_rect + A_sphere - _boat_area(d_cm, h_cm)) < 1e-9
+
+
+def test_ttype_boat_area_less_than_y_type() -> None:
+    """Boat area is less than a plain cylinder (same d, L) — V-shape is more compact."""
+    d_cm, h_cm = 20.0, 42.0
+    A_boat     = _boat_area(d_cm, h_cm)
+    A_cylinder = _math.pi * d_cm * h_cm
+    assert A_boat < A_cylinder, (
+        f"Boat area {A_boat:.2f} should be < cylinder area {A_cylinder:.2f}"
+    )
+
+
+def test_ttype_boat_calculate_returns_200() -> None:
+    """Basic smoke test: /calculate with strainer_type='T-Type (Boat)' must return 200."""
+    resp = client.post("/calculate", json={
+        "rho": 998.0, "mu_cP": 1.0, "W": 50000, "flow_unit": "kg/hr",
+        "D_pipe_cm": 39.2, "D_screen_cm": 39.2, "L_cm": 82.8,
+        "D_open_cm": 0.044, "Q_pct": 48.4, "P_pct": 51.0,
+        "strainer_type": "T-Type (Boat)",
+    })
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["A_screen_gross_cm2"] > 0
+    assert data["clean_100pct"]["delta_P_kg_cm2"] > 0
+    assert data["clogged_50pct"]["delta_P_kg_cm2"] > data["clean_100pct"]["delta_P_kg_cm2"]
+
+
+def test_ttype_boat_area_ordering_vs_all_types() -> None:
+    """Area ordering for same d and L: Basket > Y > Monkey > Boat."""
+    d_cm, h_cm = 20.0, 42.0
+    base = {
+        "rho": 998.0, "mu_cP": 1.0, "W": 10000, "flow_unit": "kg/hr",
+        "D_pipe_cm": 5.0, "D_screen_cm": d_cm, "L_cm": h_cm,
+        "D_open_cm": 0.05, "Q_pct": 62.7, "P_pct": 51.0,
+    }
+    types = ["Basket", "Y", "T-Type (Monkey)", "T-Type (Boat)"]
+    areas = {}
+    for st in types:
+        resp = client.post("/calculate", json={**base, "strainer_type": st})
+        assert resp.status_code == 200, f"Failed for {st}"
+        areas[st] = resp.json()["A_screen_gross_cm2"]
+    assert areas["Basket"] > areas["Y"] > areas["T-Type (Monkey)"] > areas["T-Type (Boat)"], (
+        f"Expected Basket({areas['Basket']:.2f}) > Y({areas['Y']:.2f}) > "
+        f"Monkey({areas['T-Type (Monkey)']:.2f}) > Boat({areas['T-Type (Boat)']:.2f})"
+    )
+
+
+def test_ttype_boat_clogged_dp_greater_than_clean() -> None:
+    """50% clogged ΔP must always exceed clean ΔP for T-Type (Boat)."""
+    resp = client.post("/calculate", json={
+        "rho": 1100.0, "mu_cP": 80.0, "W": 8000, "flow_unit": "kg/hr",
+        "D_pipe_cm": 20.0, "D_screen_cm": 20.0, "L_cm": 42.0,
+        "D_open_cm": 0.05, "Q_pct": 62.7, "P_pct": 51.0,
+        "strainer_type": "T-Type (Boat)",
+    })
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["clogged_50pct"]["delta_P_kg_cm2"] > data["clean_100pct"]["delta_P_kg_cm2"]
+
+
+# ── T-Type (Boat) — parametrized calculation cases with exact values ──────────
+#
+# Expected values produced by running calculator.py directly with strainer_type="T-Type (Boat)".
+# Tolerance: 0.5% for geometry/velocity, 1% for ΔP.
+
+TTYPE_BOAT_CASES = [
+    # ──────────────────────────────────────────────────────────────────────────
+    # TB1  Water | Excel-validated dims (d=392mm, H=828mm) | 40×36 mesh | kg/hr
+    # A_boat = 2*(H-r)*(d/√2) + π*r² → verified against Excel 4710.66 cm²
+    # ──────────────────────────────────────────────────────────────────────────
+    {
+        "id": "TB1-Water-ExcelDims-d392-H828",
+        "input": {
+            "rho": 998.0, "mu_cP": 1.0, "W": 50000, "flow_unit": "kg/hr",
+            "D_pipe_cm": 39.2, "D_screen_cm": 39.2, "L_cm": 82.8,
+            "D_open_cm": 0.044, "Q_pct": 48.4, "P_pct": 51.0,
+            "strainer_type": "T-Type (Boat)",
+        },
+        "shared": {
+            "alpha": 0.24684,
+            "A_pipe_cm2": 1206.87423,
+            "A_screen_gross_cm2": 4710.50348,
+            "Q_vol_cm3_s": 50100.20040,
+        },
+        "clean": {
+            "net_surface_area_cm2": 1162.74068,
+            "screening_area_ratio": 0.96343,
+            "V_cm_s": 10.63585,
+            "Re": 189.20814,
+            "C": 0.95,
+            "K": 17.07732,
+            "delta_P_cm_wc": 0.982642,
+        },
+        "clogged": {
+            "net_surface_area_cm2": 581.37034,
+            "screening_area_ratio": 0.48172,
+            "V_cm_s": 21.27170,
+            "Re": 378.41628,
+            "C": 1.05,
+            "K": 13.97939,
+            "delta_P_cm_wc": 3.217541,
+        },
+    },
+    # ──────────────────────────────────────────────────────────────────────────
+    # TB2  High-viscosity (Re < 21) — validates low-Re path for Boat type
+    # ──────────────────────────────────────────────────────────────────────────
+    {
+        "id": "TB2-HighViscosity-Re<21",
+        "input": {
+            "rho": 1100.0, "mu_cP": 80.0, "W": 8000, "flow_unit": "kg/hr",
+            "D_pipe_cm": 20.0, "D_screen_cm": 20.0, "L_cm": 42.0,
+            "D_open_cm": 0.05, "Q_pct": 62.7, "P_pct": 51.0,
+            "strainer_type": "T-Type (Boat)",
+        },
+        "shared": {
+            "alpha": 0.31977,
+            "A_pipe_cm2": 314.15927,
+            "A_screen_gross_cm2": 1219.25595,
+            "Q_vol_cm3_s": 7272.72727,
+        },
+        "clean": {
+            "V_cm_s": 5.96489,
+            "Re": 1.28244,
+            "K": 684.60678,
+            "delta_P_cm_wc": 13.656510,
+        },
+        "clogged": {
+            "V_cm_s": 11.92978,
+            "Re": 2.56488,
+            "K": 342.30339,
+            "delta_P_cm_wc": 27.313019,
+        },
+    },
+    # ──────────────────────────────────────────────────────────────────────────
+    # TB3  m³/hr input | medium viscosity | table-Re region
+    # ──────────────────────────────────────────────────────────────────────────
+    {
+        "id": "TB3-m3hr-TableRe",
+        "input": {
+            "rho": 900.0, "mu_cP": 2.0, "W": 5.0, "flow_unit": "m3/hr",
+            "D_pipe_cm": 12.0, "D_screen_cm": 12.0, "L_cm": 26.0,
+            "D_open_cm": 0.04, "Q_pct": 39.9, "P_pct": 51.0,
+            "strainer_type": "T-Type (Boat)",
+        },
+        "shared": {
+            "alpha": 0.20349,
+            "A_pipe_cm2": 113.09734,
+            "A_screen_gross_cm2": 452.50859,
+            "Q_vol_cm3_s": 1388.88889,
+        },
+        "clean": {
+            "V_cm_s": 3.06931,
+            "Re": 27.15002,
+            "C": 0.47,
+            "K": 104.79773,
+            "delta_P_cm_wc": 0.452873,
+        },
+        "clogged": {
+            "V_cm_s": 6.13862,
+            "Re": 54.30003,
+            "C": 0.65,
+            "K": 54.79247,
+            "delta_P_cm_wc": 0.947122,
+        },
+    },
+]
+
+
+@pytest.mark.parametrize("case", TTYPE_BOAT_CASES, ids=[c["id"] for c in TTYPE_BOAT_CASES])
+def test_ttype_boat_calculate(case: dict) -> None:
+    _run(case)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # BASKET STRAINER TESTS
 # ═══════════════════════════════════════════════════════════════════════════════
 

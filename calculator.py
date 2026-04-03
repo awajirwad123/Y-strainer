@@ -113,9 +113,10 @@ def calculate(
       α         = (Q% / 100) × (P% / 100)
       A_pipe    = π/4 × D_pipe²
       A_screen — depends on strainer_type:
-        Y / T-Type (Boat) : π × D_screen × L
+        Y                 : π × D_screen × L
         Basket            : π × D_screen × L + π × (D_screen/2)²
         T-Type (Monkey)   : π×D×(L−1.3D) + 0.644×π×D×(0.8D) + π×(D/2)²
+        T-Type (Boat)     : 2×(L−D/2)×(D/√2) + π×(D/2)²
       Q_vol     = volumetric_flow(W, unit, ρ)
 
     Then computes _compute_condition for:
@@ -140,8 +141,19 @@ def calculate(
         # (3) Straight cylinder:        π · d · (H − 0.5·d − B)
         h_straight = L_cm - 0.5 * D_screen_cm - B
         A100 = math.pi * D_screen_cm * h_straight + A_transition + A_quarter_sphere
+    elif strainer_type == "T-Type (Boat)":
+        # Boat type: two flat rectangular panels (V-prism, 90° opening) + quarter-sphere cap
+        # Panel width  B = d / √2   (each panel at 45° → effective width = d·cos45°)
+        # Panel length L = H − r    (total height minus sphere radius)
+        # (1) Quarter-sphere cap:       π · r²
+        r = D_screen_cm / 2.0
+        A_quarter_sphere = math.pi * r ** 2
+        # (2) Two flat rectangular panels: 2 · (H − r) · (d / √2)
+        B_panel = D_screen_cm / math.sqrt(2)
+        L_panel = L_cm - r
+        A100 = 2.0 * L_panel * B_panel + A_quarter_sphere
     else:
-        # Y-Type and T-Type (Boat): cylinder only
+        # Y-Type: cylinder only
         A100 = math.pi * D_screen_cm * L_cm
 
     A50 = A100 / 2.0
