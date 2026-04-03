@@ -192,6 +192,7 @@ def calculate_direct(req: CalculationRequest) -> CalculationResponse:
         Q_pct=req.Q_pct,
         P_pct=req.P_pct,
         strainer_type=req.strainer_type,
+        D_screen2_cm=req.D_screen2_cm,
     )
     return CalculationResponse(tag_no=req.tag_no, fluid_name=req.fluid_name, **result)
 

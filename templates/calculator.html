@@ -172,9 +172,19 @@
                      step="0.001" min="0">
             </div>
             <div class="col-6">
-              <div class="form-label-sm">Diameter of Screen (cm)</div>
+              <div class="form-label-sm">Diameter of Screen d1 (cm)</div>
               <input id="D_screen_cm" type="number" class="form-control form-control-sm"
                      step="0.001" min="0">
+            </div>
+          </div>
+
+          <!-- Conical: second diameter row — shown only when Conical is selected -->
+          <div id="d2-row" class="row g-2 mb-2" style="display:none;">
+            <div class="col-6"></div>
+            <div class="col-6">
+              <div class="form-label-sm">Diameter of Screen d2 (cm) <span style="color:#888;font-size:0.78em;">(smaller end; leave 0 for full cone)</span></div>
+              <input id="D_screen2_cm" type="number" class="form-control form-control-sm"
+                     step="0.001" min="0" value="0">
             </div>
           </div>
 
@@ -431,6 +441,9 @@ function populatePRClass() {
 function isBasketSelected() {
   return document.querySelector('input[name="strainer_type"]:checked')?.value === 'Basket';
 }
+function isConicalSelected() {
+  return document.querySelector('input[name="strainer_type"]:checked')?.value === 'Conical';
+}
 
 function populateScheduleDropdown(npsInch) {
   const sel = $('schedule_select');
@@ -492,10 +505,12 @@ function updateStrainerImage() {
 // ── Show/hide Schedule row when strainer type changes ────────────────────────
 document.querySelectorAll('input[name="strainer_type"]').forEach(radio => {
   radio.addEventListener('change', () => {
-    const basket = isBasketSelected();
-    const tType  = document.querySelector('input[name="strainer_type"]:checked')?.value === 'T-Type';
-    $('schedule-row').style.display   = basket ? '' : 'none';
-    $('t-subtype-row').style.display  = tType  ? '' : 'none';
+    const basket  = isBasketSelected();
+    const conical = isConicalSelected();
+    const tType   = document.querySelector('input[name="strainer_type"]:checked')?.value === 'T-Type';
+    $('schedule-row').style.display   = basket  ? '' : 'none';
+    $('t-subtype-row').style.display  = tType   ? '' : 'none';
+    $('d2-row').style.display         = conical ? '' : 'none';
     const npsVal = $('pipe_nps_select').value;
     if (basket) {
       $('D_pipe_cm').value = '';
@@ -585,12 +600,18 @@ $('perf_select').addEventListener('change', () => {
 
 // ── Live computed fields ──────────────────────────────────────────────────────
 function updateSurfaceAreas() {
-  const D = parseFloat($('D_screen_cm').value);
-  const L = parseFloat($('L_cm').value);
+  const D  = parseFloat($('D_screen_cm').value);
+  const L  = parseFloat($('L_cm').value);
   if (!isNaN(D) && !isNaN(L) && D > 0 && L > 0) {
-    let A100 = Math.PI * D * L;
+    let A100;
     if (isBasketSelected()) {
-      A100 += Math.PI * (D / 2) ** 2;   // basket: add bottom circle
+      A100 = Math.PI * D * L + Math.PI * (D / 2) ** 2;
+    } else if (isConicalSelected()) {
+      const D2 = parseFloat($('D_screen2_cm').value) || 0;
+      const r1 = D / 2, r2 = D2 / 2;
+      A100 = Math.PI * r2 ** 2 + Math.PI * (r1 + r2) * L + Math.PI * r1 ** 2;
+    } else {
+      A100 = Math.PI * D * L;
     }
     $('disp_A100').value = A100.toFixed(7);
     $('disp_A50').value  = (A100 / 2).toFixed(7);
@@ -621,6 +642,7 @@ function updateAlpha() {
 
 // Attach live update listeners
 ['D_screen_cm', 'L_cm'].forEach(id => $( id ).addEventListener('input', updateSurfaceAreas));
+$('D_screen2_cm').addEventListener('input', updateSurfaceAreas);
 $('D_pipe_cm').addEventListener('input', updatePipeArea);
 ['Q_pct', 'P_pct'].forEach(id => $(id).addEventListener('input', updateAlpha));
 
@@ -674,8 +696,10 @@ $('btn-calc').addEventListener('click', async () => {
         const sub = document.querySelector('input[name="t_subtype"]:checked')?.value || 'Monkey';
         return sub === 'Boat' ? 'T-Type (Boat)' : 'T-Type (Monkey)';
       }
+      if (t === 'Conical') return 'Conical';
       return 'Y';
     })(),
+    D_screen2_cm: isConicalSelected() ? (parseFloat($('D_screen2_cm').value) || 0) : 0,
     tag_no:     $('tag_no').value     || null,
     fluid_name: $('fluid_name').value || null,
     project:    $('project_no').value || null,

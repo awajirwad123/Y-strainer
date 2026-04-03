@@ -106,6 +106,7 @@ def calculate(
     Q_pct: float,
     P_pct: float,
     strainer_type: str = "Y",
+    D_screen2_cm: float = 0.0,
 ) -> dict:
     """Run the full strainer pressure-drop calculation.
 
@@ -113,10 +114,12 @@ def calculate(
       α         = (Q% / 100) × (P% / 100)
       A_pipe    = π/4 × D_pipe²
       A_screen — depends on strainer_type:
-        Y                 : π × D_screen × L
-        Basket            : π × D_screen × L + π × (D_screen/2)²
-        T-Type (Monkey)   : π×D×(L−1.3D) + 0.644×π×D×(0.8D) + π×(D/2)²
-        T-Type (Boat)     : 2×(L−D/2)×(D/√2) + π×(D/2)²
+        Y                 : π × d × L
+        Basket            : π × d × L + π × r²
+        T-Type (Monkey)   : π×d×(L−1.3d) + 0.644×π×d×(0.8d) + π×r²
+        T-Type (Boat)     : 2×(L−r)×(d/√2) + π×r²
+        Conical           : π×r2² + π×(r1+r2)×L + π×r1²
+                            (d1=D_screen_cm, d2=D_screen2_cm; d2=0 → full cone)
       Q_vol     = volumetric_flow(W, unit, ρ)
 
     Then computes _compute_condition for:
@@ -152,6 +155,17 @@ def calculate(
         B_panel = D_screen_cm / math.sqrt(2)
         L_panel = L_cm - r
         A100 = 2.0 * L_panel * B_panel + A_quarter_sphere
+    elif strainer_type == "Conical":
+        # Conical frustum + both end caps
+        # d1 = D_screen_cm  (larger diameter)
+        # d2 = D_screen2_cm (smaller diameter; 0 → full cone, no small end cap)
+        # Formula per Excel: π·r2² + π·(r1+r2)·H + π·r1²   (H used as slant height)
+        r1 = D_screen_cm / 2.0
+        r2 = D_screen2_cm / 2.0
+        A_lateral    = math.pi * (r1 + r2) * L_cm   # frustum lateral surface
+        A_large_cap  = math.pi * r1 ** 2             # large end circle
+        A_small_cap  = math.pi * r2 ** 2             # small end circle (0 when d2=0)
+        A100 = A_small_cap + A_lateral + A_large_cap
     else:
         # Y-Type: cylinder only
         A100 = math.pi * D_screen_cm * L_cm

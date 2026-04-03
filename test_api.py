@@ -1056,6 +1056,223 @@ def test_ttype_boat_calculate(case: dict) -> None:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# CONICAL STRAINER TESTS
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Formula:  A = π·r2² + π·(r1+r2)·H + π·r1²
+#   r1 = D_screen_cm / 2   (large-end radius)
+#   r2 = D_screen2_cm / 2  (small-end radius; 0 = full cone)
+#   H  = L_cm              (axial length, used as slant height per Excel convention)
+#
+# Excel validation (3.14 approximation):
+#   d1=392 mm, d2=196 mm, H=828 mm →
+#   3.14*(98²) + 3.14*(196+98)*828 + 3.14*(196²) = 915159.28 mm² = 9151.59 cm²
+#
+# Tolerance: 0.5 % for geometry / velocity, 1 % for ΔP.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Unit tests: gross area formula ────────────────────────────────────────────
+
+def test_conical_area_excel_example() -> None:
+    """
+    Excel-validated reference: d1=39.2 cm, d2=19.6 cm, H=82.8 cm.
+    Python (math.pi) gives 9156.23 cm²; Excel (3.14) gives 9151.59 cm².
+    Test against the Python (math.pi) result.
+    """
+    import math
+    r1, r2, H = 19.6, 9.8, 82.8
+    expected = math.pi * r2**2 + math.pi * (r1 + r2) * H + math.pi * r1**2
+    from calculator import calculate
+    res = calculate(
+        rho=998.0, mu_cP=1.0, W=50000, flow_unit="kg/hr",
+        D_pipe_cm=39.2, D_screen_cm=39.2, L_cm=82.8,
+        D_open_cm=0.044, Q_pct=48.4, P_pct=51.0,
+        strainer_type="Conical", D_screen2_cm=19.6,
+    )
+    assert abs(res["A_screen_gross_cm2"] - expected) < 1e-3, (
+        f"Gross area {res['A_screen_gross_cm2']:.5f} != expected {expected:.5f}"
+    )
+
+
+def test_conical_area_full_cone_d2_zero() -> None:
+    """When d2=0 the small-end cap vanishes: A = π·r1·H + π·r1²."""
+    import math
+    r1, H = 10.0, 42.0
+    expected = math.pi * r1 * H + math.pi * r1**2
+    from calculator import calculate
+    res = calculate(
+        rho=1100.0, mu_cP=80.0, W=8000, flow_unit="kg/hr",
+        D_pipe_cm=20.0, D_screen_cm=20.0, L_cm=42.0,
+        D_open_cm=0.05, Q_pct=62.7, P_pct=51.0,
+        strainer_type="Conical", D_screen2_cm=0.0,
+    )
+    assert abs(res["A_screen_gross_cm2"] - expected) < 1e-3
+
+
+def test_conical_area_less_than_basket() -> None:
+    """A Conical frustum (d2 < d1) has less total area than a Basket of the same outer diameter,
+    because the lateral frustum area π(r1+r2)H < π*d*H when r2 < r1."""
+    from calculator import calculate
+    base = dict(
+        rho=998.0, mu_cP=1.0, W=50000, flow_unit="kg/hr",
+        D_pipe_cm=39.2, D_screen_cm=39.2, L_cm=82.8,
+        D_open_cm=0.044, Q_pct=48.4, P_pct=51.0,
+    )
+    area_conical = calculate(**base, strainer_type="Conical", D_screen2_cm=19.6)["A_screen_gross_cm2"]
+    area_basket  = calculate(**base, strainer_type="Basket")["A_screen_gross_cm2"]
+    assert area_conical < area_basket, (
+        f"Conical area {area_conical:.2f} should be < Basket area {area_basket:.2f}"
+    )
+
+
+# ── Smoke / validation tests ──────────────────────────────────────────────────
+
+def test_conical_calculate_returns_200() -> None:
+    resp = client.post("/calculate", json={
+        "rho": 998.0, "mu_cP": 1.0, "W": 50000, "flow_unit": "kg/hr",
+        "D_pipe_cm": 39.2, "D_screen_cm": 39.2, "L_cm": 82.8,
+        "D_open_cm": 0.044, "Q_pct": 48.4, "P_pct": 51.0,
+        "strainer_type": "Conical", "D_screen2_cm": 19.6,
+    })
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "clean_100pct" in data
+    assert "clogged_50pct" in data
+
+
+def test_conical_clogged_dp_greater_than_clean() -> None:
+    """Clogged ΔP must always exceed clean ΔP for every Conical case."""
+    for inp in [
+        {"D_screen2_cm": 19.6, "D_screen_cm": 39.2, "L_cm": 82.8, "D_pipe_cm": 39.2,
+         "rho": 998.0, "mu_cP": 1.0, "W": 50000, "flow_unit": "kg/hr",
+         "D_open_cm": 0.044, "Q_pct": 48.4, "P_pct": 51.0},
+        {"D_screen2_cm": 0.0,  "D_screen_cm": 20.0, "L_cm": 42.0, "D_pipe_cm": 20.0,
+         "rho": 1100.0, "mu_cP": 80.0, "W": 8000, "flow_unit": "kg/hr",
+         "D_open_cm": 0.05, "Q_pct": 62.7, "P_pct": 51.0},
+    ]:
+        resp = client.post("/calculate", json={**inp, "strainer_type": "Conical"})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["clogged_50pct"]["delta_P_kg_cm2"] > data["clean_100pct"]["delta_P_kg_cm2"]
+
+
+# ── Parametrized calculation cases with exact values ─────────────────────────
+#
+# Expected values produced by running calculator.py directly.
+
+TTYPE_CONICAL_CASES = [
+    # ──────────────────────────────────────────────────────────────────────────
+    # TC1  Water | Excel-validated dims (d1=392mm, d2=196mm, H=828mm) | kg/hr
+    # A = π·r2² + π·(r1+r2)·H + π·r1² → 9156.23 cm² (math.pi); 9151.59 cm² (3.14)
+    # ──────────────────────────────────────────────────────────────────────────
+    {
+        "id": "TC1-Water-ExcelDims-d1-392-d2-196-H-828",
+        "input": {
+            "rho": 998.0, "mu_cP": 1.0, "W": 50000, "flow_unit": "kg/hr",
+            "D_pipe_cm": 39.2, "D_screen_cm": 39.2, "L_cm": 82.8,
+            "D_open_cm": 0.044, "Q_pct": 48.4, "P_pct": 51.0,
+            "strainer_type": "Conical", "D_screen2_cm": 19.6,
+        },
+        "shared": {
+            "alpha": 0.24684,
+            "A_pipe_cm2": 1206.87423,
+            "A_screen_gross_cm2": 9156.23462,
+            "Q_vol_cm3_s": 50100.20040,
+        },
+        "clean": {
+            "net_surface_area_cm2": 2260.12495,
+            "screening_area_ratio": 1.87271,
+            "V_cm_s": 5.47170,
+            "Re": 97.33975,
+            "C": 0.77000,
+            "K": 25.99474,
+            "delta_P_cm_wc": 0.395879,
+        },
+        "clogged": {
+            "net_surface_area_cm2": 1130.06248,
+            "V_cm_s": 10.94341,
+            "Re": 194.67950,
+            "C": 0.95000,
+            "K": 17.07732,
+            "delta_P_cm_wc": 1.040295,
+        },
+    },
+    # ──────────────────────────────────────────────────────────────────────────
+    # TC2  Full-cone (d2=0) | High-viscosity (Re < 21) | validates low-Re path
+    # ──────────────────────────────────────────────────────────────────────────
+    {
+        "id": "TC2-FullCone-d2-0-HighViscosity",
+        "input": {
+            "rho": 1100.0, "mu_cP": 80.0, "W": 8000, "flow_unit": "kg/hr",
+            "D_pipe_cm": 20.0, "D_screen_cm": 20.0, "L_cm": 42.0,
+            "D_open_cm": 0.05, "Q_pct": 62.7, "P_pct": 51.0,
+            "strainer_type": "Conical", "D_screen2_cm": 0.0,
+        },
+        "shared": {
+            "alpha": 0.31977,
+            "A_pipe_cm2": 314.15927,
+            "A_screen_gross_cm2": 1633.62818,
+            "Q_vol_cm3_s": 7272.72727,
+        },
+        "clean": {
+            "net_surface_area_cm2": 522.38528,
+            "screening_area_ratio": 1.66280,
+            "V_cm_s": 4.45189,
+            "Re": 0.95715,
+            "K": 917.27494,
+            "delta_P_cm_wc": 10.192516,
+        },
+        "clogged": {
+            "net_surface_area_cm2": 261.19264,
+            "V_cm_s": 8.90377,
+            "Re": 1.91430,
+            "K": 458.63747,
+            "delta_P_cm_wc": 20.385031,
+        },
+    },
+    # ──────────────────────────────────────────────────────────────────────────
+    # TC3  m³/hr input | d1=12cm, d2=6cm | table-Re region
+    # ──────────────────────────────────────────────────────────────────────────
+    {
+        "id": "TC3-m3hr-d1-12-d2-6",
+        "input": {
+            "rho": 900.0, "mu_cP": 2.0, "W": 5.0, "flow_unit": "m3/hr",
+            "D_pipe_cm": 12.0, "D_screen_cm": 12.0, "L_cm": 26.0,
+            "D_open_cm": 0.04, "Q_pct": 39.9, "P_pct": 51.0,
+            "strainer_type": "Conical", "D_screen2_cm": 6.0,
+        },
+        "shared": {
+            "alpha": 0.20349,
+            "A_pipe_cm2": 113.09734,
+            "A_screen_gross_cm2": 876.50435,
+            "Q_vol_cm3_s": 1388.88889,
+        },
+        "clean": {
+            "net_surface_area_cm2": 178.35987,
+            "screening_area_ratio": 1.57705,
+            "V_cm_s": 1.58458,
+            "Re": 14.01661,
+            "K": 165.15994,
+            "delta_P_cm_wc": 0.190228,
+        },
+        "clogged": {
+            "net_surface_area_cm2": 89.17994,
+            "V_cm_s": 3.16915,
+            "Re": 28.03321,
+            "C": 0.48000,
+            "K": 100.47664,
+            "delta_P_cm_wc": 0.462909,
+        },
+    },
+]
+
+
+@pytest.mark.parametrize("case", TTYPE_CONICAL_CASES, ids=[c["id"] for c in TTYPE_CONICAL_CASES])
+def test_ttype_conical_calculate(case: dict) -> None:
+    _run(case)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # BASKET STRAINER TESTS
 # ═══════════════════════════════════════════════════════════════════════════════
 

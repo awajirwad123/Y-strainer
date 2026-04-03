@@ -142,6 +142,35 @@ $$A_{screen} = 2(H - d/2)(d/\sqrt{2}) + \pi(d/2)^2$$
 > - A_sphere = π × 19.6² = **1206.88 cm²**
 > - **Total = 4710.51 cm²** (Excel gives 4710.66 cm² using 3.142 — 0.03% difference)
 
+#### 3e. Conical (Frustum)
+
+A truncated cone with both end caps — a large-diameter inlet face and a smaller-diameter outlet face:
+
+| Component | Formula | Excel Cell |
+|-----------|---------|------------|
+| **Small end cap** | $\pi r_2^2$ | `=3.14*D9^2` |
+| **Lateral surface (frustum)** | $\pi (r_1 + r_2) H$ | `=3.14*(D8+D9)*D5` |
+| **Large end cap** | $\pi r_1^2$ | `=3.14*D8^2` |
+
+Where:
+- $r_1 = d_1 / 2$ — large-end radius (`D_screen_cm / 2`)
+- $r_2 = d_2 / 2$ — small-end radius (`D_screen2_cm / 2`; defaults to 0 for a full cone)
+- $H$ = total screen axial length (`L_cm`)
+
+> **Note:** The Excel formula `=3.14*(D8+D9)*D5` uses the axial length $H$ directly as the slant height — this is a standard engineering approximation. The true geometric slant height would be $l = \sqrt{H^2 + (r_1-r_2)^2}$, which for these proportions differs by < 2%.
+
+$$A_{screen} = \pi r_2^2 + \pi (r_1 + r_2) H + \pi r_1^2$$
+
+**Special case — full cone ($d_2 = 0$):**
+$$A_{screen} = \pi r_1 H + \pi r_1^2 = \pi r_1 (H + r_1)$$
+
+> **Validated against Excel (using math.pi):**
+> - d1 = 39.2 cm, d2 = 19.6 cm, H = 82.8 cm → r1 = 19.6 cm, r2 = 9.8 cm
+> - A_small  = π × 9.8² = **301.72 cm²**
+> - A_lateral = π × (19.6 + 9.8) × 82.8 = **7647.64 cm²**
+> - A_large  = π × 19.6² = **1206.87 cm²**
+> - **Total (math.pi) = 9156.23 cm²** — Excel (3.14) = 9151.59 cm² — difference < 0.05%
+
 **Area formula summary across strainer types** (same d and L):
 
 | Type | Formula | Notes |
@@ -150,6 +179,7 @@ $$A_{screen} = 2(H - d/2)(d/\sqrt{2}) + \pi(d/2)^2$$
 | Basket | $\pi d L + \pi r^2$ | Cylinder + closed bottom |
 | T-Type (Monkey) | $\pi d(L-1.3d) + 0.644\pi d(0.8d) + \pi r^2$ | Shorter cylinder + transition + cap |
 | T-Type (Boat) | $2(L-r)(d/\sqrt{2}) + \pi r^2$ | Two flat V-panels + cap |
+| Conical | $\pi r_2^2 + \pi(r_1+r_2)H + \pi r_1^2$ | Small cap + lateral frustum + large cap |
 
 **50% clogged** (all types):
 $$A_{screen,50\%} = \frac{A_{screen}}{2}$$
@@ -320,6 +350,10 @@ elif strainer_type == "T-Type (Monkey)":
 elif strainer_type == "T-Type (Boat)":
     r            = D_screen / 2
     A_screen_100 = 2×(L - r)×(D_screen/√2) + π×r²
+elif strainer_type == "Conical":
+    r1           = D_screen / 2
+    r2           = D_screen2 / 2   # 0 for full cone
+    A_screen_100 = π×r2² + π×(r1+r2)×L + π×r1²
 else:  # Y-Type
     A_screen_100 = π × D_screen × L
 A_screen_50  = A_screen_100 / 2

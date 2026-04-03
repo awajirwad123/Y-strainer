@@ -28,9 +28,18 @@ class CalculationRequest(BaseModel):
     # Strainer type — controls screen area formula
     # Basket:          A_screen = π·d·L + π·(d/2)²
     # T-Type (Monkey): A_screen = π·d·(L−1.3d) + 0.644·π·d·(0.8d) + π·(d/2)²
-    # Y / T-Type (Boat) / T-Type: A_screen = π·d·L (cylinder only)
-    strainer_type: Literal["Y", "Basket", "T-Type", "T-Type (Monkey)", "T-Type (Boat)"] = Field(
-        "Y", description="Strainer type: Y, Basket, T-Type (Monkey), or T-Type (Boat)"
+    # T-Type (Boat):   A_screen = 2·(L−d/2)·(d/√2) + π·(d/2)²
+    # Conical:         A_screen = π·r2² + π·(r1+r2)·L + π·r1²
+    # Y:               A_screen = π·d·L (cylinder only)
+    strainer_type: Literal["Y", "Basket", "T-Type", "T-Type (Monkey)", "T-Type (Boat)", "Conical"] = Field(
+        "Y", description="Strainer type: Y, Basket, T-Type (Monkey), T-Type (Boat), or Conical"
+    )
+
+    # Conical-type second diameter — the smaller end diameter (cm)
+    # Required when strainer_type='Conical'; defaults to 0 (full cone, no small end cap)
+    D_screen2_cm: float = Field(
+        0.0, ge=0,
+        description="Smaller-end screen diameter (cm) — used only for Conical type; 0 = full cone"
     )
 
     # Optional metadata
