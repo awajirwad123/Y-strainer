@@ -105,15 +105,17 @@ def calculate(
     D_open_cm: float,
     Q_pct: float,
     P_pct: float,
-    include_bottom_circle: bool = False,
+    strainer_type: str = "Y",
 ) -> dict:
     """Run the full strainer pressure-drop calculation.
 
     Shared steps (common to both conditions):
       α         = (Q% / 100) × (P% / 100)
       A_pipe    = π/4 × D_pipe²
-      A_screen  = π × D_screen × L                      (Y-strainer: cylinder only)
-                  π × D_screen × L + π × (D_screen/2)²  (Basket: cylinder + bottom circle)
+      A_screen — depends on strainer_type:
+        Y / T-Type (Boat) : π × D_screen × L
+        Basket            : π × D_screen × L + π × (D_screen/2)²
+        T-Type (Monkey)   : π×D×(L−1.3D) + 0.644×π×D×(0.8D) + π×(D/2)²
       Q_vol     = volumetric_flow(W, unit, ρ)
 
     Then computes _compute_condition for:
@@ -124,9 +126,24 @@ def calculate(
     """
     alpha = (Q_pct / 100.0) * (P_pct / 100.0)
     A_pipe = math.pi / 4.0 * D_pipe_cm**2
-    A100 = math.pi * D_screen_cm * L_cm
-    if include_bottom_circle:
-        A100 += math.pi * (D_screen_cm / 2.0) ** 2
+
+    if strainer_type == "Basket":
+        # Cylinder + bottom circle
+        A100 = math.pi * D_screen_cm * L_cm + math.pi * (D_screen_cm / 2.0) ** 2
+    elif strainer_type in ("T-Type (Monkey)", "T-Type"):
+        # Monkey type: three components
+        # (1) Quarter-sphere cap:       π · (d/2)²
+        A_quarter_sphere = math.pi * (D_screen_cm / 2.0) ** 2
+        # (2) Oblique transition:       0.644 · π · d · (0.8·d)
+        B = 0.8 * D_screen_cm
+        A_transition = 0.644 * math.pi * D_screen_cm * B
+        # (3) Straight cylinder:        π · d · (H − 0.5·d − B)
+        h_straight = L_cm - 0.5 * D_screen_cm - B
+        A100 = math.pi * D_screen_cm * h_straight + A_transition + A_quarter_sphere
+    else:
+        # Y-Type and T-Type (Boat): cylinder only
+        A100 = math.pi * D_screen_cm * L_cm
+
     A50 = A100 / 2.0
     rho = rho / 1000.0 
     Q_vol = volumetric_flow(W, flow_unit, rho)

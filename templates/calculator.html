@@ -667,7 +667,15 @@ $('btn-calc').addEventListener('click', async () => {
   const payload = {
     rho, mu_cP, W, flow_unit,
     D_pipe_cm, D_screen_cm, L_cm, D_open_cm, Q_pct, P_pct,
-    strainer_type: isBasketSelected() ? 'Basket' : 'Y',
+    strainer_type: (() => {
+      if (isBasketSelected()) return 'Basket';
+      const t = document.querySelector('input[name="strainer_type"]:checked')?.value;
+      if (t === 'T-Type') {
+        const sub = document.querySelector('input[name="t_subtype"]:checked')?.value || 'Monkey';
+        return sub === 'Boat' ? 'T-Type (Boat)' : 'T-Type (Monkey)';
+      }
+      return 'Y';
+    })(),
     tag_no:     $('tag_no').value     || null,
     fluid_name: $('fluid_name').value || null,
     project:    $('project_no').value || null,

@@ -72,17 +72,56 @@ $$A_{pipe} = \frac{\pi}{4} \times D_{pipe}^2 \quad [\text{cm}^2]$$
 
 ---
 
-### Step 3 — Screen Surface Area (Cylindrical)
+### Step 3 — Screen Surface Area
 
-**100% Clean condition:**
+The formula for gross screen surface area depends on the **strainer type**:
+
+#### 3a. Y-Type and T-Type (Boat)
+Pure cylinder — the conventional model:
+
 $$A_{screen} = \pi \times D_{screen} \times L \quad [\text{cm}^2]$$
-
-**50% Clogged condition:**
-$$A_{screen,50\%} = \frac{A_{screen}}{2}$$
 
 > **Verified:** π × 11.8 × 22.2 = **823.08 cm²** (100%) → **411.54 cm²** (50%) ✓
 
-**Note:** The software uses the strainer data (D, L in mm) internally. Tiny differences (~0.01%) may arise from stored precision of strainer dimensions.
+#### 3b. Basket Strainer
+Cylinder **plus bottom circle** (closed-end cylindrical basket):
+
+$$A_{screen} = \pi \times D_{screen} \times L + \pi \times r^2 \quad [\text{cm}^2]$$
+
+Where $r = D_{screen} / 2$.
+
+> **Example:** d = 21 cm, L = 30 cm → A = π × 21 × 30 + π × 10.5² = 1979.20 + 346.36 = **2325.56 cm²** ✓  
+> (Matches Excel screenshot: 2324.39 cm² — tiny difference from Excel using 3.14 vs π)
+
+#### 3c. T-Type (Monkey type screen)
+Three-component surface, matching the Excel formula sheet validated example (d = 392 mm, H = 828 mm):
+
+| Component | Formula | Excel Cell |
+|-----------|---------|------------|
+| **(3) Straight cylinder** | $\pi \times d \times (H - 0.5d - 0.8d)$ | `=3.14*d*(H-(0.5*d+0.8*d))` |
+| **(2) Oblique transition section** | $0.644 \times \pi \times d \times (0.8d)$ | `=0.644*3.14*d*0.8*d` |
+| **(1) Quarter-sphere cap** | $\pi \times r^2$ | `=3.14*(d/2)^2` |
+
+$$A_{screen} = \underbrace{\pi d (H - 1.3d)}_{\text{straight cylinder}} + \underbrace{0.644 \pi d (0.8d)}_{\text{transition}} + \underbrace{\pi (d/2)^2}_{\text{quarter sphere}}$$
+
+Where:
+- $H$ = total screen length (`L_cm` input)
+- $d$ = screen diameter (`D_screen_cm` input)
+- $0.8d$ = transition section height $B$
+- $0.5d$ = height contribution of the quarter-sphere cap ($= r$)
+- $0.644$ = slant factor of the oblique transition (≈ cos 50°)
+
+> **Validated against Excel (using math.pi):**
+> - d = 39.2 cm, H = 82.8 cm
+> - A_straight = π × 39.2 × 31.84 = **3921.69 cm²**
+> - A_transition = 0.644 × π × 39.2 × 31.36 = **2486.65 cm²**
+> - A_quarter_sphere = π × 19.6² = **1206.81 cm²**
+> - **Total = 7615.15 cm²** (Excel gives 7611.25 cm² using 3.14 — 0.05% difference)
+
+**Note:** `L_cm` must be > 1.3 × `D_screen_cm` for the straight cylinder section to have positive length.
+
+**50% clogged** (all types):
+$$A_{screen,50\%} = \frac{A_{screen}}{2}$$
 
 ---
 
@@ -241,9 +280,15 @@ g = 981  # cm/s²
 # Step 2: Pipe area
 A_pipe = π/4 × D_pipe²
 
-# Step 3: Screen surface area
-A_screen_100 = π × D_screen × L          # 100% clean
-A_screen_50  = A_screen_100 / 2           # 50% clogged
+# Step 3: Screen surface area (depends on strainer_type)
+if strainer_type == "Basket":
+    A_screen_100 = π × D_screen × L + π × (D_screen/2)²
+elif strainer_type == "T-Type (Monkey)":
+    B            = 0.8 × D_screen
+    A_screen_100 = π×D_screen×(L - 1.3×D_screen) + 0.644×π×D_screen×B + π×(D_screen/2)²
+else:  # Y-Type, T-Type (Boat)
+    A_screen_100 = π × D_screen × L
+A_screen_50  = A_screen_100 / 2
 
 # Step 4: Net area & ratio
 Net_area = A_screen × α

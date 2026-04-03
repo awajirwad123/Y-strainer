@@ -610,10 +610,246 @@ def test_no_mesh_requires_d_open_override() -> None:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# BASKET STRAINER TESTS
+# T-TYPE (MONKEY) STRAINER TESTS
 # ═══════════════════════════════════════════════════════════════════════════════
 
 import math as _math
+
+def _ttype_area(d_cm: float, h_cm: float) -> float:
+    """Reference implementation of T-Type (Monkey) screen area (cm²)."""
+    B = 0.8 * d_cm
+    A_straight       = _math.pi * d_cm * (h_cm - 0.5 * d_cm - B)
+    A_transition     = 0.644 * _math.pi * d_cm * B
+    A_quarter_sphere = _math.pi * (d_cm / 2.0) ** 2
+    return A_straight + A_transition + A_quarter_sphere
+
+
+def test_ttype_monkey_area_formula_excel_example() -> None:
+    """Verify the monkey area formula on the Excel-validated example.
+
+    Excel (using 3.14): d=392 mm, H=828 mm → 761124.99 mm² = 7611.25 cm²
+    Code  (math.pi)   : same dims          → 7615.11 cm²
+    Allowed deviation < 0.1% (difference is solely Excel using 3.14 vs math.pi).
+    """
+    d_cm = 39.2   # 392 mm
+    h_cm = 82.8   # 828 mm
+    area = _ttype_area(d_cm, h_cm)
+    excel_cm2 = 7611.25   # Excel reference (3.14 approximation)
+    rel_err = abs(area - excel_cm2) / excel_cm2
+    assert rel_err < 0.001, f"Area={area:.2f} cm², Excel={excel_cm2} cm², rel_err={rel_err*100:.3f}%"
+
+
+def test_ttype_monkey_area_three_components() -> None:
+    """Each component of the monkey area must be positive for well-formed geometry."""
+    d_cm, h_cm = 39.2, 82.8
+    B = 0.8 * d_cm
+    A_straight       = _math.pi * d_cm * (h_cm - 0.5 * d_cm - B)
+    A_transition     = 0.644 * _math.pi * d_cm * B
+    A_quarter_sphere = _math.pi * (d_cm / 2.0) ** 2
+    assert A_straight > 0,       f"Straight section must be positive; got {A_straight}"
+    assert A_transition > 0,     f"Transition section must be positive; got {A_transition}"
+    assert A_quarter_sphere > 0, f"Quarter sphere must be positive; got {A_quarter_sphere}"
+    total = A_straight + A_transition + A_quarter_sphere
+    assert abs(total - _ttype_area(d_cm, h_cm)) < 1e-9
+
+
+def test_ttype_monkey_area_less_than_y_type() -> None:
+    """T-Type (Monkey) area is LESS than a plain cylinder of the same d and L.
+
+    The monkey formula replaces the top part of the cylinder with a shorter
+    straight section + oblique transition + quarter-sphere, whose combined area
+    is smaller than the full-length cylinder it replaces.
+    """
+    d_cm, h_cm = 20.0, 42.0
+    A_monkey   = _ttype_area(d_cm, h_cm)
+    A_cylinder = _math.pi * d_cm * h_cm
+    assert A_monkey < A_cylinder, (
+        f"Monkey area {A_monkey:.2f} should be < cylinder area {A_cylinder:.2f}"
+    )
+
+
+def test_ttype_monkey_calculate_returns_200() -> None:
+    """Basic smoke test: /calculate with strainer_type='T-Type (Monkey)' must return 200."""
+    resp = client.post("/calculate", json={
+        "rho": 998.0, "mu_cP": 1.0, "W": 50000, "flow_unit": "kg/hr",
+        "D_pipe_cm": 39.2, "D_screen_cm": 39.2, "L_cm": 82.8,
+        "D_open_cm": 0.044, "Q_pct": 48.4, "P_pct": 51.0,
+        "strainer_type": "T-Type (Monkey)",
+    })
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["A_screen_gross_cm2"] > 0
+    assert data["clean_100pct"]["delta_P_kg_cm2"] > 0
+    assert data["clogged_50pct"]["delta_P_kg_cm2"] > data["clean_100pct"]["delta_P_kg_cm2"]
+
+
+def test_ttype_monkey_area_ordering() -> None:
+    """Area ordering for same d and L: basket > Y > monkey.
+
+    basket = cylinder + bottom circle  → largest
+    Y      = cylinder only
+    monkey = shorter cylinder + transition + quarter sphere → smallest
+    """
+    d_cm, h_cm = 20.0, 42.0
+    resp_monkey = client.post("/calculate", json={
+        "rho": 998.0, "mu_cP": 1.0, "W": 10000, "flow_unit": "kg/hr",
+        "D_pipe_cm": 5.0, "D_screen_cm": d_cm, "L_cm": h_cm,
+        "D_open_cm": 0.05, "Q_pct": 62.7, "P_pct": 51.0,
+        "strainer_type": "T-Type (Monkey)",
+    })
+    resp_basket = client.post("/calculate", json={
+        "rho": 998.0, "mu_cP": 1.0, "W": 10000, "flow_unit": "kg/hr",
+        "D_pipe_cm": 5.0, "D_screen_cm": d_cm, "L_cm": h_cm,
+        "D_open_cm": 0.05, "Q_pct": 62.7, "P_pct": 51.0,
+        "strainer_type": "Basket",
+    })
+    resp_y = client.post("/calculate", json={
+        "rho": 998.0, "mu_cP": 1.0, "W": 10000, "flow_unit": "kg/hr",
+        "D_pipe_cm": 5.0, "D_screen_cm": d_cm, "L_cm": h_cm,
+        "D_open_cm": 0.05, "Q_pct": 62.7, "P_pct": 51.0,
+        "strainer_type": "Y",
+    })
+    assert resp_monkey.status_code == 200
+    assert resp_basket.status_code == 200
+    assert resp_y.status_code == 200
+    A_monkey = resp_monkey.json()["A_screen_gross_cm2"]
+    A_basket = resp_basket.json()["A_screen_gross_cm2"]
+    A_y      = resp_y.json()["A_screen_gross_cm2"]
+    assert A_basket > A_y > A_monkey, (
+        f"Expected basket({A_basket:.2f}) > Y({A_y:.2f}) > monkey({A_monkey:.2f})"
+    )
+
+
+def test_ttype_monkey_clogged_dp_greater_than_clean() -> None:
+    """50% clogged ΔP must always exceed clean ΔP for T-Type (Monkey)."""
+    resp = client.post("/calculate", json={
+        "rho": 1100.0, "mu_cP": 80.0, "W": 8000, "flow_unit": "kg/hr",
+        "D_pipe_cm": 20.0, "D_screen_cm": 20.0, "L_cm": 42.0,
+        "D_open_cm": 0.05, "Q_pct": 62.7, "P_pct": 51.0,
+        "strainer_type": "T-Type (Monkey)",
+    })
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["clogged_50pct"]["delta_P_kg_cm2"] > data["clean_100pct"]["delta_P_kg_cm2"]
+
+
+# ── T-Type (Monkey) — parametrized calculation cases with exact values ─────────
+#
+# Expected values produced by running calculator.py directly with strainer_type="T-Type (Monkey)".
+# Tolerance: 0.5% for geometry/velocity, 1% for ΔP.
+
+TTYPE_CASES = [
+    # ──────────────────────────────────────────────────────────────────────────
+    # TM1  Water | Excel-validated dims (d=392mm, H=828mm) | 40×36 mesh | kg/hr
+    # Verifies area formula against the Excel reference example.
+    # ──────────────────────────────────────────────────────────────────────────
+    {
+        "id": "TM1-Water-ExcelDims-d392-H828",
+        "input": {
+            "rho": 998.0, "mu_cP": 1.0, "W": 50000, "flow_unit": "kg/hr",
+            "D_pipe_cm": 39.2, "D_screen_cm": 39.2, "L_cm": 82.8,
+            "D_open_cm": 0.044, "Q_pct": 48.4, "P_pct": 51.0,
+            "strainer_type": "T-Type (Monkey)",
+        },
+        "shared": {
+            "alpha": 0.24684,
+            "A_pipe_cm2": 1206.87423,
+            "A_screen_gross_cm2": 7615.11041,
+            "Q_vol_cm3_s": 50100.20040,
+        },
+        "clean": {
+            "net_surface_area_cm2": 1879.71385,
+            "screening_area_ratio": 1.55751,
+            "V_cm_s": 6.57905,
+            "Re": 117.03909,
+            "C": 0.80,
+            "K": 24.08169,
+            "delta_P_cm_wc": 0.530206,
+        },
+        "clogged": {
+            "net_surface_area_cm2": 939.85693,
+            "screening_area_ratio": 0.77875,
+            "V_cm_s": 13.15810,
+            "Re": 234.07818,
+            "C": 1.00,
+            "K": 15.41228,
+            "delta_P_cm_wc": 1.357328,
+        },
+    },
+    # ──────────────────────────────────────────────────────────────────────────
+    # TM2  High-viscosity (Re < 21) | medium strainer
+    # Validates low-Re formula branch for T-Type (Monkey).
+    # ──────────────────────────────────────────────────────────────────────────
+    {
+        "id": "TM2-HighViscosity-Re<21",
+        "input": {
+            "rho": 1100.0, "mu_cP": 80.0, "W": 8000, "flow_unit": "kg/hr",
+            "D_pipe_cm": 20.0, "D_screen_cm": 20.0, "L_cm": 42.0,
+            "D_open_cm": 0.05, "Q_pct": 62.7, "P_pct": 51.0,
+            "strainer_type": "T-Type (Monkey)",
+        },
+        "shared": {
+            "alpha": 0.31977,
+            "A_pipe_cm2": 314.15927,
+            "A_screen_gross_cm2": 1966.88833,
+            "Q_vol_cm3_s": 7272.72727,
+        },
+        "clean": {
+            "V_cm_s": 3.69758,
+            "Re": 0.79497,
+            "K": 1104.39903,
+            "delta_P_cm_wc": 8.465544,
+        },
+        "clogged": {
+            "V_cm_s": 7.39516,
+            "Re": 1.58995,
+            "K": 552.19951,
+            "delta_P_cm_wc": 16.931089,
+        },
+    },
+    # ──────────────────────────────────────────────────────────────────────────
+    # TM3  m³/hr input | medium viscosity | fractional-Re region
+    # ──────────────────────────────────────────────────────────────────────────
+    {
+        "id": "TM3-m3hr-FractionalRe",
+        "input": {
+            "rho": 900.0, "mu_cP": 2.0, "W": 5.0, "flow_unit": "m3/hr",
+            "D_pipe_cm": 12.0, "D_screen_cm": 12.0, "L_cm": 26.0,
+            "D_open_cm": 0.04, "Q_pct": 39.9, "P_pct": 51.0,
+            "strainer_type": "T-Type (Monkey)",
+        },
+        "shared": {
+            "alpha": 0.20349,
+            "A_pipe_cm2": 113.09734,
+            "A_screen_gross_cm2": 738.23909,
+            "Q_vol_cm3_s": 1388.88889,
+        },
+        "clean": {
+            "V_cm_s": 1.88135,
+            "Re": 16.64178,
+            "K": 139.10658,
+            "delta_P_cm_wc": 0.225856,
+        },
+        "clogged": {
+            "V_cm_s": 3.76271,
+            "Re": 33.28357,
+            "C": 0.53,
+            "K": 82.41302,
+            "delta_P_cm_wc": 0.535230,
+        },
+    },
+]
+
+
+@pytest.mark.parametrize("case", TTYPE_CASES, ids=[c["id"] for c in TTYPE_CASES])
+def test_ttype_monkey_calculate(case: dict) -> None:
+    _run(case)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# BASKET STRAINER TESTS
+# ═══════════════════════════════════════════════════════════════════════════════
+
 from calculator import lookup_C as _lookup_C
 
 

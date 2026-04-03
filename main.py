@@ -191,7 +191,7 @@ def calculate_direct(req: CalculationRequest) -> CalculationResponse:
         D_open_cm=req.D_open_cm,
         Q_pct=req.Q_pct,
         P_pct=req.P_pct,
-        include_bottom_circle=(req.strainer_type == "Basket"),
+        strainer_type=req.strainer_type,
     )
     return CalculationResponse(tag_no=req.tag_no, fluid_name=req.fluid_name, **result)
 
