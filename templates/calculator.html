@@ -27,8 +27,8 @@
   <div class="calc-card px-3 py-2 mb-2">
     <div class="row g-2">
       <div class="col-md-3 col-sm-6">
-        <div class="form-label-sm">Tag No.</div>
-        <input id="tag_no" type="text" class="form-control form-control-sm" placeholder="PRD-001">
+        <div class="form-label-sm">Tag No. <span style="color:#888;font-size:.78em;">(comma-separated for multiple)</span></div>
+        <input id="tag_no" type="text" class="form-control form-control-sm" placeholder="PRD-001, PRD-002, PRD-003">
       </div>
       <div class="col-md-3 col-sm-6">
         <div class="form-label-sm">Fluid Name</div>
@@ -154,8 +154,8 @@
             </div>
           </div>
 
-          <!-- Schedule selection — Basket strainer only -->
-          <div class="row g-2 mb-2" id="schedule-row" style="display:none">
+          <!-- Schedule selection -->
+          <div class="row g-2 mb-2" id="schedule-row">
             <div class="col-6">
               <div class="form-label-sm">Schedule</div>
               <select id="schedule_select" class="form-select form-select-sm">
@@ -457,17 +457,19 @@ function populateScheduleDropdown(npsInch) {
   });
 }
 
-// ── On NPS change → auto-fill Pipe ID (or populate Schedule for Basket) ───────
+// ── On NPS change → auto-fill Pipe ID and populate Schedule ─────────────────
 $('pipe_nps_select').addEventListener('change', () => {
   const val = $('pipe_nps_select').value;
+  // Always populate schedule dropdown
+  if (val) {
+    populateScheduleDropdown(JSON.parse(val).nps_inch);
+  } else {
+    $('schedule_select').innerHTML = '<option value="">— Select Schedule —</option>';
+  }
   if (isBasketSelected()) {
+    // For Basket: pipe ID comes from schedule selection, not NPS directly
     $('D_pipe_cm').value = '';
     $('disp_A_pipe').value = '';
-    if (val) {
-      populateScheduleDropdown(JSON.parse(val).nps_inch);
-    } else {
-      $('schedule_select').innerHTML = '<option value="">— Select Schedule —</option>';
-    }
   } else {
     if (val) {
       const p = JSON.parse(val);
@@ -508,7 +510,7 @@ document.querySelectorAll('input[name="strainer_type"]').forEach(radio => {
     const basket  = isBasketSelected();
     const conical = isConicalSelected();
     const tType   = document.querySelector('input[name="strainer_type"]:checked')?.value === 'T-Type';
-    $('schedule-row').style.display   = basket  ? '' : 'none';
+    $('schedule-row').style.display   = '';  // always visible
     $('t-subtype-row').style.display  = tType   ? '' : 'none';
     $('d2-row').style.display         = conical ? '' : 'none';
     const npsVal = $('pipe_nps_select').value;
@@ -732,6 +734,7 @@ function displayResults(data, Q_pct, P_pct, D_open_cm, mu_cP) {
   _lastResult = data;
   _lastInputs = {
     tag_no:       $('tag_no').value,
+    schedule:     (() => { const v = $('schedule_select').value; if (!v) return ''; try { return JSON.parse(v).schedule; } catch { return v; } })(),
     fluid_name:   $('fluid_name').value,
     company_name: $('company_name').value,
     project_no:   $('project_no').value,
@@ -819,16 +822,7 @@ $('btn-export-pdf').addEventListener('click', () => {
     'T-Type':          'T STRAINER',
     'Conical':         'CONICAL STRAINER',
   };
-  const strainerSubtitle = Object.entries(strainerMap)
-    .filter(([val]) => {
-      // If a specific T subtype is stored, skip the generic 'T-Type' entry
-      if (val === 'T-Type' && (i.strainer_type === 'T-Type (Monkey)' || i.strainer_type === 'T-Type (Boat)')) return false;
-      return true;
-    })
-    .map(([val, label]) => val === i.strainer_type
-      ? `<strong style="color:#c00;">${label}</strong>`
-      : label)
-    .join(' / ');
+  const strainerHeading = strainerMap[i.strainer_type] || i.strainer_type;
 
   const meshPart = i.mesh_label ? i.mesh_label.split('(')[0].trim() : 'Mesh';
   const perfPart = i.perf_label ? i.perf_label.split('(')[0].trim() : 'Perforation';
@@ -890,17 +884,28 @@ $('btn-export-pdf').addEventListener('click', () => {
   <!-- TITLE -->
   <div class="title-section">
     <div class="main-title">PRESSURE DROP CALCULATION</div>
-    <div class="strainer-subtitle">${strainerSubtitle} <span style="color:#c00;">(Based on what we have selected)</span></div>
+    <div class="strainer-subtitle">${strainerHeading}</div>
   </div>
 
   <!-- TAG NO -->
   <div class="tag-section">
     <div class="tag-header">TAG NO: <span class="tag-note">(This area is dedicated for tag numbers only, if multiple tags are there they shall be listed here in three column and rows)</span></div>
-    <table class="tag-grid">
-      <tr><td>${i.tag_no || ''}</td><td></td><td></td></tr>
-      <tr><td></td><td></td><td></td></tr>
-      <tr><td></td><td></td><td></td></tr>
-    </table>
+    ${(() => {
+      const tags = i.tag_no ? i.tag_no.split(',').map(t => t.trim()).filter(Boolean) : [];
+      const cols = 3;
+      const rows = Math.max(3, Math.ceil(tags.length / cols));
+      let html = '<table class="tag-grid">';
+      for (let r = 0; r < rows; r++) {
+        html += '<tr>';
+        for (let c = 0; c < cols; c++) {
+          const idx = r * cols + c;
+          html += `<td>${tags[idx] || ''}</td>`;
+        }
+        html += '</tr>';
+      }
+      html += '</table>';
+      return html;
+    })()}
   </div>
 
   <!-- CUSTOMER INFO -->
@@ -924,12 +929,12 @@ $('btn-export-pdf').addEventListener('click', () => {
         <td class="dl">Length of screen</td><td class="dv">: ${i.L_cm} cm</td>
       </tr>
       <tr>
-        <td class="dl">Pipe ID</td><td class="dv">: ${i.D_pipe_cm} cm</td><td class="dsep"></td>
+        <td class="dl">Schedule</td><td class="dv">: ${i.schedule || '\u2014'}</td><td class="dsep"></td>
         <td class="dl">Surface area of the screen</td><td class="dv">: ${n(i.A100,4)} cm&#178;</td>
       </tr>
       <tr>
-        <td class="dl">Cross section area of pipe</td><td class="dv">: ${n(i.A_pipe,2)} cm&#178;</td><td class="dsep"></td>
-        <td></td><td></td>
+        <td class="dl">Pipe ID</td><td class="dv">: ${i.D_pipe_cm} cm</td><td class="dsep"></td>
+        <td class="dl">Cross section area of pipe</td><td class="dv">: ${n(i.A_pipe,2)} cm&#178;</td>
       </tr>
     </table>
   </div>
