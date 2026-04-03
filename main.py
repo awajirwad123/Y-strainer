@@ -27,6 +27,9 @@ import secrets
 from pathlib import Path
 from contextlib import asynccontextmanager
 
+from dotenv import load_dotenv
+load_dotenv(Path(__file__).parent / ".env")
+
 from fastapi import FastAPI, HTTPException, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -74,6 +77,14 @@ def _get_session_secret() -> str:
 @asynccontextmanager
 async def _lifespan(application: FastAPI):
     init_db()
+    # Auto-create admin user from env vars if provided
+    _username = os.environ.get("ADMIN_USERNAME", "").strip()
+    _email    = os.environ.get("ADMIN_EMAIL", "").strip()
+    _password = os.environ.get("ADMIN_PASSWORD", "").strip()
+    if _username and _email and _password:
+        ok, _ = create_user(_username, _email, _password)
+        if ok:
+            print(f"[startup] Admin user '{_username}' created from environment variables.")
     yield
 
 
@@ -180,6 +191,7 @@ def calculate_direct(req: CalculationRequest) -> CalculationResponse:
         D_open_cm=req.D_open_cm,
         Q_pct=req.Q_pct,
         P_pct=req.P_pct,
+        include_bottom_circle=(req.strainer_type == "Basket"),
     )
     return CalculationResponse(tag_no=req.tag_no, fluid_name=req.fluid_name, **result)
 

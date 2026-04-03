@@ -105,13 +105,15 @@ def calculate(
     D_open_cm: float,
     Q_pct: float,
     P_pct: float,
+    include_bottom_circle: bool = False,
 ) -> dict:
-    """Run the full Y-strainer pressure-drop calculation.
+    """Run the full strainer pressure-drop calculation.
 
     Shared steps (common to both conditions):
       α         = (Q% / 100) × (P% / 100)
       A_pipe    = π/4 × D_pipe²
-      A_screen  = π × D_screen × L          (100% clean gross area)
+      A_screen  = π × D_screen × L                      (Y-strainer: cylinder only)
+                  π × D_screen × L + π × (D_screen/2)²  (Basket: cylinder + bottom circle)
       Q_vol     = volumetric_flow(W, unit, ρ)
 
     Then computes _compute_condition for:
@@ -123,6 +125,8 @@ def calculate(
     alpha = (Q_pct / 100.0) * (P_pct / 100.0)
     A_pipe = math.pi / 4.0 * D_pipe_cm**2
     A100 = math.pi * D_screen_cm * L_cm
+    if include_bottom_circle:
+        A100 += math.pi * (D_screen_cm / 2.0) ** 2
     A50 = A100 / 2.0
     rho = rho / 1000.0 
     Q_vol = volumetric_flow(W, flow_unit, rho)

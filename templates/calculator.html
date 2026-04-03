@@ -509,6 +509,7 @@ document.querySelectorAll('input[name="strainer_type"]').forEach(radio => {
         updatePipeArea();
       }
     }
+    updateSurfaceAreas();   // recalculate A100/A50 with correct formula for type
     updateStrainerImage();
   });
 });
@@ -587,7 +588,10 @@ function updateSurfaceAreas() {
   const D = parseFloat($('D_screen_cm').value);
   const L = parseFloat($('L_cm').value);
   if (!isNaN(D) && !isNaN(L) && D > 0 && L > 0) {
-    const A100 = Math.PI * D * L;
+    let A100 = Math.PI * D * L;
+    if (isBasketSelected()) {
+      A100 += Math.PI * (D / 2) ** 2;   // basket: add bottom circle
+    }
     $('disp_A100').value = A100.toFixed(7);
     $('disp_A50').value  = (A100 / 2).toFixed(7);
   } else {
@@ -663,6 +667,7 @@ $('btn-calc').addEventListener('click', async () => {
   const payload = {
     rho, mu_cP, W, flow_unit,
     D_pipe_cm, D_screen_cm, L_cm, D_open_cm, Q_pct, P_pct,
+    strainer_type: isBasketSelected() ? 'Basket' : 'Y',
     tag_no:     $('tag_no').value     || null,
     fluid_name: $('fluid_name').value || null,
     project:    $('project_no').value || null,

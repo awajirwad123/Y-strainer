@@ -25,6 +25,13 @@ class CalculationRequest(BaseModel):
     Q_pct: float = Field(..., gt=0, le=100, description="Mesh open area Q (%)")
     P_pct: float = Field(..., gt=0, le=100, description="Perforated-sheet open area P (%)")
 
+    # Strainer type — controls screen area formula
+    # Basket: A_screen = π·d·L + π·(d/2)²  (cylinder + bottom circle)
+    # Y / T-Type: A_screen = π·d·L            (cylinder only)
+    strainer_type: Literal["Y", "Basket", "T-Type"] = Field(
+        "Y", description="Strainer type: Y, Basket, or T-Type"
+    )
+
     # Optional metadata
     tag_no: Optional[str] = None
     fluid_name: Optional[str] = None

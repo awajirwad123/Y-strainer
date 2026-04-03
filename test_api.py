@@ -842,7 +842,7 @@ def test_basket_m3hr_flow_unit() -> None:
 BASKET_CASES = [
     # ──────────────────────────────────────────────────────────────────────────
     # BS1  Water | 2" pipe | 40×SWG36 mesh (Q=48.4%) | Perf 51% | kg/hr
-    # Follows the same formula chain as Y-type; validates Basket pipe-ID path.
+    # A_screen = π·d·L + π·(d/2)²  (cylinder + bottom circle)
     # ──────────────────────────────────────────────────────────────────────────
     {
         "id": "BS1-Water-2inch-sch40",
@@ -850,35 +850,36 @@ BASKET_CASES = [
             "rho": 998.0, "mu_cP": 1.0, "W": 5000, "flow_unit": "kg/hr",
             "D_pipe_cm": 5.0, "D_screen_cm": 5.7, "L_cm": 13.8,
             "D_open_cm": 0.044, "Q_pct": 48.4, "P_pct": 51.0,
+            "strainer_type": "Basket",
         },
         "shared": {
             "alpha": 0.24684,
             "A_pipe_cm2": 19.63495,
-            "A_screen_gross_cm2": 247.11768,
+            "A_screen_gross_cm2": 272.63526,
             "Q_vol_cm3_s": 5010.02004,
         },
         "clean": {
-            "net_surface_area_cm2": 60.99853,
-            "screening_area_ratio": 3.10663,
-            "V_cm_s": 20.27382,
-            "Re": 360.66444,
-            "C": 1.04,
-            "K": 14.24952,
-            "delta_P_kg_cm2": 0.002979,
+            "net_surface_area_cm2": 67.29729,
+            "screening_area_ratio": 3.42742,
+            "V_cm_s": 18.37627,
+            "Re": 326.90767,
+            "C": 1.02,
+            "K": 14.81380,
+            "delta_P_kg_cm2": 0.002545,
         },
         "clogged": {
-            "net_surface_area_cm2": 30.49926,
-            "screening_area_ratio": 1.55331,
-            "V_cm_s": 40.54765,
-            "Re": 721.32889,
-            "C": 1.25,
-            "K": 9.86386,
-            "delta_P_kg_cm2": 0.008249,
+            "net_surface_area_cm2": 33.64864,
+            "screening_area_ratio": 1.71371,
+            "V_cm_s": 36.75255,
+            "Re": 653.81534,
+            "C": 1.22,
+            "K": 10.35493,
+            "delta_P_kg_cm2": 0.007115,
         },
     },
     # ──────────────────────────────────────────────────────────────────────────
     # BS2  High-viscosity fluid (Re < 21 → C = sqrt(Re)/10)
-    # Validates the low-Re formula branch used for viscous basket applications.
+    # A_screen = π·d·L + π·(d/2)²  (cylinder + bottom circle)
     # ──────────────────────────────────────────────────────────────────────────
     {
         "id": "BS2-HighViscosity-Re<21",
@@ -886,28 +887,30 @@ BASKET_CASES = [
             "rho": 1070.0, "mu_cP": 350.0, "W": 800, "flow_unit": "kg/hr",
             "D_pipe_cm": 3.0, "D_screen_cm": 3.5, "L_cm": 12.0,
             "D_open_cm": 0.2, "Q_pct": 100.0, "P_pct": 40.0,
+            "strainer_type": "Basket",
         },
         "shared": {
             "alpha": 0.40000,
             "A_pipe_cm2": 7.06858,
-            "A_screen_gross_cm2": 131.94689,
+            "A_screen_gross_cm2": 141.56802,
             "Q_vol_cm3_s": 747.66355,
         },
         "clean": {
-            "V_cm_s": 5.66640,
-            "Re": 0.86615,
-            "K": 606.13103,
-            "delta_P_cm_wc": 10.613665,
+            "V_cm_s": 5.28130,
+            "Re": 0.80728,
+            "K": 650.32809,
+            "delta_P_cm_wc": 9.892348,
         },
         "clogged": {
-            "V_cm_s": 11.33280,
-            "Re": 1.73230,
-            "K": 303.06552,
-            "delta_P_cm_wc": 21.227331,
+            "V_cm_s": 10.56261,
+            "Re": 1.61457,
+            "K": 325.16404,
+            "delta_P_cm_wc": 19.784696,
         },
     },
     # ──────────────────────────────────────────────────────────────────────────
     # BS3  m³/hr input | medium viscosity | fractional-Re boundary region
+    # A_screen = π·d·L + π·(d/2)²  (cylinder + bottom circle)
     # ──────────────────────────────────────────────────────────────────────────
     {
         "id": "BS3-m3hr-FractionalRe",
@@ -915,24 +918,25 @@ BASKET_CASES = [
             "rho": 900.0, "mu_cP": 2.0, "W": 0.3, "flow_unit": "m3/hr",
             "D_pipe_cm": 2.0, "D_screen_cm": 2.5, "L_cm": 10.0,
             "D_open_cm": 0.04, "Q_pct": 39.9, "P_pct": 51.0,
+            "strainer_type": "Basket",
         },
         "shared": {
             "alpha": 0.20349,
             "A_pipe_cm2": 3.14159,
-            "A_screen_gross_cm2": 78.53982,
+            "A_screen_gross_cm2": 83.44855,
             "Q_vol_cm3_s": 83.33333,
         },
         "clean": {
-            "V_cm_s": 1.06103,
-            "Re": 9.38552,
-            "K": 246.65463,
-            "delta_P_cm_wc": 0.127377,
+            "V_cm_s": 0.99862,
+            "Re": 8.83343,
+            "K": 262.07054,
+            "delta_P_cm_wc": 0.119884,
         },
         "clogged": {
-            "V_cm_s": 2.12207,
-            "Re": 18.77104,
-            "K": 123.32731,
-            "delta_P_cm_wc": 0.254754,
+            "V_cm_s": 1.99724,
+            "Re": 17.66686,
+            "K": 131.03527,
+            "delta_P_cm_wc": 0.239768,
         },
     },
 ]
