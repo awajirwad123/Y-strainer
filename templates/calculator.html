@@ -154,8 +154,8 @@
             </div>
           </div>
 
-          <!-- Schedule selection -->
-          <div class="row g-2 mb-2" id="schedule-row">
+          <!-- Schedule selection — hidden for Y-Type (default) -->
+          <div class="row g-2 mb-2" id="schedule-row" style="display:none">
             <div class="col-6">
               <div class="form-label-sm">Schedule</div>
               <select id="schedule_select" class="form-select form-select-sm">
@@ -410,6 +410,9 @@ async function loadLookups() {
     populatePRClass();
     populateMesh();
     populatePerf();
+    // Y-Type is default — hide schedule on init
+    const defaultType = document.querySelector('input[name="strainer_type"]:checked')?.value;
+    $('schedule-row').style.display = (defaultType === 'Y-Type' || !defaultType) ? 'none' : '';
   } catch(e) {
     showError('Failed to load dropdowns: ' + e.message);
   }
@@ -510,7 +513,8 @@ document.querySelectorAll('input[name="strainer_type"]').forEach(radio => {
     const basket  = isBasketSelected();
     const conical = isConicalSelected();
     const tType   = document.querySelector('input[name="strainer_type"]:checked')?.value === 'T-Type';
-    $('schedule-row').style.display   = '';  // always visible
+    const yType   = document.querySelector('input[name="strainer_type"]:checked')?.value === 'Y-Type';
+    $('schedule-row').style.display   = yType ? 'none' : '';
     $('t-subtype-row').style.display  = tType   ? '' : 'none';
     $('d2-row').style.display         = conical ? '' : 'none';
     const npsVal = $('pipe_nps_select').value;
@@ -892,16 +896,12 @@ $('btn-export-pdf').addEventListener('click', () => {
     <div class="tag-header">TAG NO: <span class="tag-note">(This area is dedicated for tag numbers only, if multiple tags are there they shall be listed here in three column and rows)</span></div>
     ${(() => {
       const tags = i.tag_no ? i.tag_no.split(',').map(t => t.trim()).filter(Boolean) : [];
+      if (!tags.length) return '<table class="tag-grid"><tr><td></td></tr></table>';
       const cols = 3;
-      const rows = Math.max(3, Math.ceil(tags.length / cols));
       let html = '<table class="tag-grid">';
-      for (let r = 0; r < rows; r++) {
-        html += '<tr>';
-        for (let c = 0; c < cols; c++) {
-          const idx = r * cols + c;
-          html += `<td>${tags[idx] || ''}</td>`;
-        }
-        html += '</tr>';
+      for (let r = 0; r < Math.ceil(tags.length / cols); r++) {
+        const rowTags = tags.slice(r * cols, r * cols + cols);
+        html += '<tr>' + rowTags.map(t => `<td>${t}</td>`).join('') + '</tr>';
       }
       html += '</table>';
       return html;
