@@ -817,6 +817,8 @@ $('btn-export-pdf').addEventListener('click', () => {
   const n  = (v, dp) => (v !== null && v !== undefined) ? Number(v).toFixed(dp) : '—';
   const ne = (v) => (v !== null && v !== undefined) ? Number(v).toExponential(5) : '—';
   const mu_cgs = (Number(i.mu_cP) * 0.01).toFixed(5);
+  // Escape user-supplied text fields to prevent XSS in the PDF window
+  const esc = (s) => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
   const strainerMap = {
     'Y-Type':          'Y STRAINER',
@@ -901,7 +903,7 @@ $('btn-export-pdf').addEventListener('click', () => {
       let html = '<table class="tag-grid">';
       for (let r = 0; r < Math.ceil(tags.length / cols); r++) {
         const rowTags = tags.slice(r * cols, r * cols + cols);
-        html += '<tr>' + rowTags.map(t => `<td>${t}</td>`).join('') + '</tr>';
+        html += '<tr>' + rowTags.map(t => `<td>${esc(t)}</td>`).join('') + '</tr>';
       }
       html += '</table>';
       return html;
@@ -911,9 +913,9 @@ $('btn-export-pdf').addEventListener('click', () => {
   <!-- CUSTOMER INFO -->
   <div class="info-section">
     <table class="info-tbl">
-      <tr><td class="inf-lbl">Customer Name</td><td style="width:12px;">:</td><td>${i.company_name || ''}</td></tr>
-      <tr><td class="inf-lbl">Consultant Name</td><td>:</td><td>${i.consultant_name || ''}</td></tr>
-      <tr><td class="inf-lbl">Project No.</td><td>:</td><td>${i.project_no || ''}</td></tr>
+      <tr><td class="inf-lbl">Customer Name</td><td style="width:12px;">:</td><td>${esc(i.company_name)}</td></tr>
+      <tr><td class="inf-lbl">Consultant Name</td><td>:</td><td>${esc(i.consultant_name)}</td></tr>
+      <tr><td class="inf-lbl">Project No.</td><td>:</td><td>${esc(i.project_no)}</td></tr>
     </table>
   </div>
 
@@ -944,7 +946,7 @@ $('btn-export-pdf').addEventListener('click', () => {
     <table class="param-tbl">
       <tr>
         <td class="pl">Q (Mesh Size : ${meshPart})</td><td class="pv">: ${i.Q_pct} %</td><td class="psep"></td>
-        <td class="prl">Media</td><td>: ${i.fluid_name || '\u2014'}</td>
+        <td class="prl">Media</td><td>: ${esc(i.fluid_name) || '\u2014'}</td>
       </tr>
       <tr>
         <td class="pl">P ( ${perfPart} )</td><td class="pv">: ${i.P_pct} %</td><td class="psep"></td>
