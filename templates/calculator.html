@@ -616,7 +616,8 @@ function updateSurfaceAreas() {
       const D2 = parseFloat($('D_screen2_cm').value) || 0;
       const r1 = D / 2, r2 = D2 / 2;
       const slant = Math.sqrt(L * L + (r1 - r2) ** 2);   // true geometric slant height
-      A100 = Math.PI * r2 ** 2 + Math.PI * (r1 + r2) * slant + Math.PI * r1 ** 2;
+      // Lateral + small end cap only (large end is open, not screen area)
+      A100 = Math.PI * (r1 + r2) * slant + Math.PI * r2 ** 2;
     } else {
       A100 = Math.PI * D * L;
     }

@@ -156,19 +156,20 @@ def calculate(
         L_panel = L_cm - r
         A100 = 2.0 * L_panel * B_panel + A_quarter_sphere
     elif strainer_type == "Conical":
-        # Conical frustum + both end caps
-        # d1 = D_screen_cm  (larger diameter)
-        # d2 = D_screen2_cm (smaller diameter; 0 → full cone, no small end cap)
-        # L_cm is the AXIAL height H.
-        # True slant height: l = √[H² + (r1−r2)²]
-        # Lateral surface area: π·(r1+r2)·l
+        # Conical frustum screen area:
+        #   r1 = D_screen_cm / 2   (large end — open, connects to pipe body)
+        #   r2 = D_screen2_cm / 2  (small end — closed cap; 0 = full cone with no cap)
+        #   l  = sqrt(H² + (r1-r2)²)  true slant height
+        #
+        # Screen area = lateral surface + small end cap ONLY.
+        # The large end is open (bolted into the strainer body) — NOT screen area.
+        #   A = π·(r1+r2)·l  +  π·r2²
         r1 = D_screen_cm / 2.0
         r2 = D_screen2_cm / 2.0
-        slant       = math.sqrt(L_cm**2 + (r1 - r2)**2)   # true geometric slant height
-        A_lateral   = math.pi * (r1 + r2) * slant          # frustum lateral surface
-        A_large_cap = math.pi * r1 ** 2                     # large end circle
-        A_small_cap = math.pi * r2 ** 2                     # small end circle (0 when d2=0)
-        A100 = A_small_cap + A_lateral + A_large_cap
+        slant     = math.sqrt(L_cm**2 + (r1 - r2)**2)   # true geometric slant height
+        A_lateral = math.pi * (r1 + r2) * slant          # frustum lateral surface
+        A_small_cap = math.pi * r2 ** 2                   # small end cap (0 when d2=0)
+        A100 = A_lateral + A_small_cap
     else:
         # Y-Type: cylinder only
         A100 = math.pi * D_screen_cm * L_cm
