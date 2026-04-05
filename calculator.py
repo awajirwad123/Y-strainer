@@ -159,12 +159,15 @@ def calculate(
         # Conical frustum + both end caps
         # d1 = D_screen_cm  (larger diameter)
         # d2 = D_screen2_cm (smaller diameter; 0 → full cone, no small end cap)
-        # Formula per Excel: π·r2² + π·(r1+r2)·H + π·r1²   (H used as slant height)
+        # L_cm is the AXIAL height H.
+        # True slant height: l = √[H² + (r1−r2)²]
+        # Lateral surface area: π·(r1+r2)·l
         r1 = D_screen_cm / 2.0
         r2 = D_screen2_cm / 2.0
-        A_lateral    = math.pi * (r1 + r2) * L_cm   # frustum lateral surface
-        A_large_cap  = math.pi * r1 ** 2             # large end circle
-        A_small_cap  = math.pi * r2 ** 2             # small end circle (0 when d2=0)
+        slant       = math.sqrt(L_cm**2 + (r1 - r2)**2)   # true geometric slant height
+        A_lateral   = math.pi * (r1 + r2) * slant          # frustum lateral surface
+        A_large_cap = math.pi * r1 ** 2                     # large end circle
+        A_small_cap = math.pi * r2 ** 2                     # small end circle (0 when d2=0)
         A100 = A_small_cap + A_lateral + A_large_cap
     else:
         # Y-Type: cylinder only

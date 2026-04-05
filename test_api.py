@@ -1075,13 +1075,14 @@ def test_ttype_boat_calculate(case: dict) -> None:
 
 def test_conical_area_excel_example() -> None:
     """
-    Excel-validated reference: d1=39.2 cm, d2=19.6 cm, H=82.8 cm.
-    Python (math.pi) gives 9156.23 cm²; Excel (3.14) gives 9151.59 cm².
-    Test against the Python (math.pi) result.
+    Excel-validated reference: d1=39.2 cm, d2=19.6 cm, H=82.8 cm (axial).
+    Correct formula uses true slant height l = sqrt(H^2 + (r1-r2)^2).
+    Expected (math.pi, true slant): 9209.61 cm^2.
     """
     import math
     r1, r2, H = 19.6, 9.8, 82.8
-    expected = math.pi * r2**2 + math.pi * (r1 + r2) * H + math.pi * r1**2
+    slant = math.sqrt(H**2 + (r1 - r2)**2)
+    expected = math.pi * r2**2 + math.pi * (r1 + r2) * slant + math.pi * r1**2
     from calculator import calculate
     res = calculate(
         rho=998.0, mu_cP=1.0, W=50000, flow_unit="kg/hr",
@@ -1095,10 +1096,11 @@ def test_conical_area_excel_example() -> None:
 
 
 def test_conical_area_full_cone_d2_zero() -> None:
-    """When d2=0 the small-end cap vanishes: A = π·r1·H + π·r1²."""
+    """When d2=0: A = pi*r1*slant + pi*r1^2, where slant=sqrt(H^2+r1^2)."""
     import math
     r1, H = 10.0, 42.0
-    expected = math.pi * r1 * H + math.pi * r1**2
+    slant = math.sqrt(H**2 + r1**2)
+    expected = math.pi * r1 * slant + math.pi * r1**2
     from calculator import calculate
     res = calculate(
         rho=1100.0, mu_cP=80.0, W=8000, flow_unit="kg/hr",
@@ -1162,8 +1164,9 @@ def test_conical_clogged_dp_greater_than_clean() -> None:
 
 TTYPE_CONICAL_CASES = [
     # ──────────────────────────────────────────────────────────────────────────
-    # TC1  Water | Excel-validated dims (d1=392mm, d2=196mm, H=828mm) | kg/hr
-    # A = π·r2² + π·(r1+r2)·H + π·r1² → 9156.23 cm² (math.pi); 9151.59 cm² (3.14)
+    # TC1  Water | Excel-validated dims (d1=392mm, d2=196mm, H=828mm axial) | kg/hr
+    # True slant l = sqrt(82.8^2 + (19.6-9.8)^2) = 83.378 cm
+    # A = pi*r2^2 + pi*(r1+r2)*l + pi*r1^2 = 9209.61 cm^2
     # ──────────────────────────────────────────────────────────────────────────
     {
         "id": "TC1-Water-ExcelDims-d1-392-d2-196-H-828",
@@ -1176,25 +1179,25 @@ TTYPE_CONICAL_CASES = [
         "shared": {
             "alpha": 0.24684,
             "A_pipe_cm2": 1206.87423,
-            "A_screen_gross_cm2": 9156.23462,
+            "A_screen_gross_cm2": 9209.61430,
             "Q_vol_cm3_s": 50100.20040,
         },
         "clean": {
-            "net_surface_area_cm2": 2260.12495,
-            "screening_area_ratio": 1.87271,
-            "V_cm_s": 5.47170,
-            "Re": 97.33975,
+            "net_surface_area_cm2": 2273.30119,
+            "screening_area_ratio": 1.88363,
+            "V_cm_s": 5.43999,
+            "Re": 96.77556,
             "C": 0.77000,
             "K": 25.99474,
-            "delta_P_cm_wc": 0.395879,
+            "delta_P_cm_wc": 0.391303,
         },
         "clogged": {
-            "net_surface_area_cm2": 1130.06248,
-            "V_cm_s": 10.94341,
-            "Re": 194.67950,
+            "net_surface_area_cm2": 1136.65060,
+            "V_cm_s": 10.87998,
+            "Re": 193.55112,
             "C": 0.95000,
             "K": 17.07732,
-            "delta_P_cm_wc": 1.040295,
+            "delta_P_cm_wc": 1.028270,
         },
     },
     # ──────────────────────────────────────────────────────────────────────────
@@ -1211,23 +1214,23 @@ TTYPE_CONICAL_CASES = [
         "shared": {
             "alpha": 0.31977,
             "A_pipe_cm2": 314.15927,
-            "A_screen_gross_cm2": 1633.62818,
+            "A_screen_gross_cm2": 1670.51256,
             "Q_vol_cm3_s": 7272.72727,
         },
         "clean": {
-            "net_surface_area_cm2": 522.38528,
-            "screening_area_ratio": 1.66280,
-            "V_cm_s": 4.45189,
-            "Re": 0.95715,
-            "K": 917.27494,
-            "delta_P_cm_wc": 10.192516,
+            "net_surface_area_cm2": 534.17980,
+            "screening_area_ratio": 1.70035,
+            "V_cm_s": 4.35359,
+            "Re": 0.93601,
+            "K": 937.98536,
+            "delta_P_cm_wc": 9.967468,
         },
         "clogged": {
-            "net_surface_area_cm2": 261.19264,
-            "V_cm_s": 8.90377,
-            "Re": 1.91430,
-            "K": 458.63747,
-            "delta_P_cm_wc": 20.385031,
+            "net_surface_area_cm2": 267.08990,
+            "V_cm_s": 8.70718,
+            "Re": 1.87203,
+            "K": 468.99268,
+            "delta_P_cm_wc": 19.934936,
         },
     },
     # ──────────────────────────────────────────────────────────────────────────
@@ -1244,24 +1247,24 @@ TTYPE_CONICAL_CASES = [
         "shared": {
             "alpha": 0.20349,
             "A_pipe_cm2": 113.09734,
-            "A_screen_gross_cm2": 876.50435,
+            "A_screen_gross_cm2": 881.38180,
             "Q_vol_cm3_s": 1388.88889,
         },
         "clean": {
-            "net_surface_area_cm2": 178.35987,
-            "screening_area_ratio": 1.57705,
-            "V_cm_s": 1.58458,
-            "Re": 14.01661,
-            "K": 165.15994,
-            "delta_P_cm_wc": 0.190228,
+            "net_surface_area_cm2": 179.35238,
+            "screening_area_ratio": 1.58582,
+            "V_cm_s": 1.57581,
+            "Re": 13.93904,
+            "K": 166.07900,
+            "delta_P_cm_wc": 0.189176,
         },
         "clogged": {
-            "net_surface_area_cm2": 89.17994,
-            "V_cm_s": 3.16915,
-            "Re": 28.03321,
-            "C": 0.48000,
-            "K": 100.47664,
-            "delta_P_cm_wc": 0.462909,
+            "net_surface_area_cm2": 89.67619,
+            "V_cm_s": 3.15162,
+            "Re": 27.87808,
+            "C": 0.47000,
+            "K": 104.79773,
+            "delta_P_cm_wc": 0.477488,
         },
     },
 ]
