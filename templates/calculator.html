@@ -791,7 +791,7 @@ function displayResults(data, Q_pct, P_pct, D_open_cm, mu_cP) {
   $('r50_Re').textContent    = c50.Re.toFixed(4);
   $('r50_C').textContent     = c50.C;
   $('r50_K').textContent     = c50.K.toFixed(2);
-  $('r50_dP_kg').textContent = c50.delta_P_kg_cm2.toFixed(5);
+  $('r50_dP_kg').textContent = formatDP(c50.delta_P_kg_cm2);
 
   // 100% clean
   $('r100_surf').textContent  = c100.surface_area_cm2.toFixed(2);
@@ -801,7 +801,7 @@ function displayResults(data, Q_pct, P_pct, D_open_cm, mu_cP) {
   $('r100_Re').textContent    = c100.Re.toFixed(4);
   $('r100_C').textContent     = c100.C;
   $('r100_K').textContent     = c100.K.toFixed(2);
-  $('r100_dP_kg').textContent = c100.delta_P_kg_cm2.toFixed(5);
+  $('r100_dP_kg').textContent = formatDP(c100.delta_P_kg_cm2);
 
   $('summary-band').style.display   = 'block';
   $('results-section').style.display = 'block';
@@ -818,6 +818,12 @@ $('btn-export-pdf').addEventListener('click', () => {
 
   const n  = (v, dp) => (v !== null && v !== undefined) ? Number(v).toFixed(dp) : '—';
   const ne = (v) => (v !== null && v !== undefined) ? Number(v).toExponential(5) : '—';
+  // Format ΔP: use fixed(5) when value shows at least 1 sig fig at 5dp, else scientific notation
+  const formatDP = (v) => {
+    if (v === null || v === undefined) return '—';
+    const num = Number(v);
+    return num > 0 && num < 0.000005 ? num.toExponential(3) : num.toFixed(5);
+  };
   const mu_cgs = (Number(i.mu_cP) * 0.01).toFixed(5);
   // Escape user-supplied text fields to prevent XSS in the PDF window
   const esc = (s) => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -990,7 +996,7 @@ $('btn-export-pdf').addEventListener('click', () => {
         <tr><td>C</td><td class="num">${c50.C}</td><td class="num">${c100.C}</td><td></td></tr>
         <tr class="g-row"><td>g</td><td class="num">9.81</td><td class="num">9.81</td><td>m/sec&#178;</td></tr>
         <tr><td>K</td><td class="num">${n(c50.K,2)}</td><td class="num">${n(c100.K,2)}</td><td></td></tr>
-        <tr class="dp-row"><td>&#916;P</td><td class="num">${n(c50.delta_P_kg_cm2,5)}</td><td class="num">${n(c100.delta_P_kg_cm2,5)}</td><td>Kg/cm&#178; (g)</td></tr>
+        <tr class="dp-row"><td>&#916;P</td><td class="num">${formatDP(c50.delta_P_kg_cm2)}</td><td class="num">${formatDP(c100.delta_P_kg_cm2)}</td><td>Kg/cm&#178; (g)</td></tr>
       </tbody>
     </table>
   </div>
