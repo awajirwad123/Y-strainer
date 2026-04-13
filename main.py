@@ -201,11 +201,17 @@ def send_tnc_email(request: Request, html_body: str = Form(...)):
     msg.attach(MIMEText(html_body, "html"))
 
     try:
-        with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
-            server.starttls()
-            server.login(smtp_user, smtp_pass)
-            server.sendmail(smtp_user, [recipient], msg.as_string())
+        if smtp_port == 465:
+            with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=30) as server:
+                server.login(smtp_user, smtp_pass)
+                server.sendmail(smtp_user, [recipient], msg.as_string())
+        else:
+            with smtplib.SMTP(smtp_host, smtp_port, timeout=30) as server:
+                server.starttls()
+                server.login(smtp_user, smtp_pass)
+                server.sendmail(smtp_user, [recipient], msg.as_string())
     except Exception as exc:
+        print(f"[email] SMTP error: {exc}")
         raise HTTPException(status_code=500, detail=f"Failed to send email: {exc}")
 
     return {"status": "ok", "message": f"T&C acceptance emailed to {recipient}"}
