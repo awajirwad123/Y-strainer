@@ -182,6 +182,10 @@ def send_tnc_email(request: Request, html_body: str = Form(...)):
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
+    from datetime import datetime
+    ts = datetime.now().strftime("%d %B %Y, %H:%M:%S")
+    print(f"[tnc] User '{user}' accepted T&C at {ts}")
+
     recipient = os.environ.get("TNC_RECIPIENT_EMAIL", "").strip()
     smtp_host = os.environ.get("SMTP_HOST", "smtp.gmail.com").strip()
     smtp_port = int(os.environ.get("SMTP_PORT", "587"))
@@ -189,10 +193,8 @@ def send_tnc_email(request: Request, html_body: str = Form(...)):
     smtp_pass = os.environ.get("SMTP_PASSWORD", "").strip()
 
     if not recipient or not smtp_user or not smtp_pass:
-        raise HTTPException(
-            status_code=500,
-            detail="Email not configured. Set TNC_RECIPIENT_EMAIL, SMTP_USERNAME, and SMTP_PASSWORD in .env",
-        )
+        # Email not configured -- acceptance is still recorded in logs
+        return {"status": "ok", "message": "T&C accepted (email not configured)"}
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = f"T&C Acceptance - {user}"
@@ -210,9 +212,11 @@ def send_tnc_email(request: Request, html_body: str = Form(...)):
                 server.starttls()
                 server.login(smtp_user, smtp_pass)
                 server.sendmail(smtp_user, [recipient], msg.as_string())
+        print(f"[tnc] Email sent to {recipient}")
     except Exception as exc:
-        print(f"[email] SMTP error: {exc}")
-        raise HTTPException(status_code=500, detail=f"Failed to send email: {exc}")
+        # Log but don't block -- acceptance is recorded above
+        print(f"[tnc] SMTP failed (acceptance still recorded): {exc}")
+        return {"status": "ok", "message": "T&C accepted (email delivery failed, recorded in server logs)"}
 
     return {"status": "ok", "message": f"T&C acceptance emailed to {recipient}"}
 
