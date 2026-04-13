@@ -1236,23 +1236,22 @@ loadLookups();
 
 </body></html>`;
 
-    // Send via backend email
+    // Save acceptance on server
     acceptBtn.disabled = true;
-    acceptBtn.textContent = 'Sending…';
+    acceptBtn.textContent = 'Saving…';
     try {
       const fd = new FormData();
       fd.append('html_body', tncHTML);
-      const resp = await fetch('/api/send-tnc-email', { method: 'POST', body: fd });
+      const resp = await fetch('/api/accept-tnc', { method: 'POST', body: fd });
       const data = await resp.json();
       if (!resp.ok) {
-        alert('Failed to send T&C email: ' + (data.detail || 'Unknown error'));
+        alert('Failed to record T&C acceptance: ' + (data.detail || 'Unknown error'));
         acceptBtn.disabled = false;
         acceptBtn.textContent = '✓ I Accept';
         return;
       }
-      alert('T&C acceptance emailed successfully.');
     } catch (err) {
-      alert('Network error sending T&C email: ' + err.message);
+      alert('Network error: ' + err.message);
       acceptBtn.disabled = false;
       acceptBtn.textContent = '✓ I Accept';
       return;

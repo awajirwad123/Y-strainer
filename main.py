@@ -26,9 +26,7 @@ import os
 import secrets
 from pathlib import Path
 from contextlib import asynccontextmanager
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+from datetime import datetime
 
 from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent / ".env")
@@ -173,52 +171,29 @@ def logout(request: Request):
     return RedirectResponse("/login", status_code=302)
 
 
-# -- T&C acceptance email -------------------------------------------------------
+# -- T&C acceptance (stored locally) --------------------------------------------
 
-@app.post("/api/send-tnc-email", include_in_schema=False)
-def send_tnc_email(request: Request, html_body: str = Form(...)):
-    """Email the signed T&C acceptance HTML to the configured recipient."""
+_TNC_DIR = Path(__file__).parent / "tnc_acceptances"
+_TNC_DIR.mkdir(exist_ok=True)
+
+
+@app.post("/api/accept-tnc", include_in_schema=False)
+def accept_tnc(request: Request, html_body: str = Form(...)):
+    """Store the signed T&C acceptance HTML locally on the server."""
     user = _current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    from datetime import datetime
-    ts = datetime.now().strftime("%d %B %Y, %H:%M:%S")
-    print(f"[tnc] User '{user}' accepted T&C at {ts}")
+    ts = datetime.now()
+    ts_label = ts.strftime("%d %B %Y, %H:%M:%S")
+    ts_file = ts.strftime("%Y%m%d_%H%M%S")
+    filename = f"{user}_{ts_file}.html"
+    filepath = _TNC_DIR / filename
 
-    recipient = os.environ.get("TNC_RECIPIENT_EMAIL", "").strip()
-    smtp_host = os.environ.get("SMTP_HOST", "smtp.gmail.com").strip()
-    smtp_port = int(os.environ.get("SMTP_PORT", "587"))
-    smtp_user = os.environ.get("SMTP_USERNAME", "").strip()
-    smtp_pass = os.environ.get("SMTP_PASSWORD", "").strip()
+    filepath.write_text(html_body, encoding="utf-8")
+    print(f"[tnc] User '{user}' accepted T&C at {ts_label} -> {filepath}")
 
-    if not recipient or not smtp_user or not smtp_pass:
-        # Email not configured -- acceptance is still recorded in logs
-        return {"status": "ok", "message": "T&C accepted (email not configured)"}
-
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = f"T&C Acceptance - {user}"
-    msg["From"] = smtp_user
-    msg["To"] = recipient
-    msg.attach(MIMEText(html_body, "html"))
-
-    try:
-        if smtp_port == 465:
-            with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=30) as server:
-                server.login(smtp_user, smtp_pass)
-                server.sendmail(smtp_user, [recipient], msg.as_string())
-        else:
-            with smtplib.SMTP(smtp_host, smtp_port, timeout=30) as server:
-                server.starttls()
-                server.login(smtp_user, smtp_pass)
-                server.sendmail(smtp_user, [recipient], msg.as_string())
-        print(f"[tnc] Email sent to {recipient}")
-    except Exception as exc:
-        # Log but don't block -- acceptance is recorded above
-        print(f"[tnc] SMTP failed (acceptance still recorded): {exc}")
-        return {"status": "ok", "message": "T&C accepted (email delivery failed, recorded in server logs)"}
-
-    return {"status": "ok", "message": f"T&C acceptance emailed to {recipient}"}
+    return {"status": "ok", "message": f"T&C acceptance saved as {filename}"}
 
 
 # -- Primary calculation endpoint -----------------------------------------------

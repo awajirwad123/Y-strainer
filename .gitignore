@@ -15,6 +15,7 @@ env/
 .env
 .session_secret
 users.db
+tnc_acceptances/
 
 # Excel reference data — included in repo so Railway can load it
 # *.xlsx
