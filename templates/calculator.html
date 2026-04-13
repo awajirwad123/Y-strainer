@@ -407,7 +407,7 @@
       <p>Calculations are based on principles consistent with <em>Perry's Chemical Engineers' Handbook</em> and standard fluid-mechanics references. The Software does not certify compliance with any specific national or international standard (e.g. ASME, ISO, BS) unless explicitly stated.</p>
 
       <h6 style="color:#1a3c5e; margin-top:14px;">8. Acceptance</h6>
-      <p>By clicking <strong>I Accept</strong>, the user acknowledges that they have read, understood, and agree to be bound by these Terms and Conditions. A signed copy of this acceptance will be downloaded as a PDF record.</p>
+      <p>By clicking <strong>I Accept</strong>, the user acknowledges that they have read, understood, and agree to be bound by these Terms and Conditions. A signed copy of this acceptance will be emailed to the administrator as a record.</p>
 
     </div>
     <!-- Footer -->
@@ -1171,8 +1171,8 @@ loadLookups();
     window.location.href = '/logout';
   });
 
-  // Accept → generate PDF, download, close modal
-  acceptBtn.addEventListener('click', () => {
+  // Accept → email signed T&C, close modal
+  acceptBtn.addEventListener('click', async () => {
     if (!checkbox.checked) return;
 
     const now = new Date();
@@ -1191,7 +1191,6 @@ loadLookups();
   .header-box { border:1.5px solid #1a3c5e; padding:10px 14px; margin-bottom:16px; border-radius:4px; }
   .sig-box { border:1px solid #888; padding:10px 14px; margin-top:20px; border-radius:4px; background:#f7f9fb; }
   .sig-box p { margin:3px 0; }
-  @page { size:A4 portrait; margin:0; }
 </style></head><body>
 
 <div class="header-box">
@@ -1235,12 +1234,29 @@ loadLookups();
   <p style="color:#888; font-size:8pt; margin-top:6px;">This document was auto-generated upon acceptance of Terms &amp; Conditions.</p>
 </div>
 
-<script>window.onload = () => window.print();<\/script>
 </body></html>`;
 
-    const win = window.open('', '_blank', 'width=820,height=700');
-    win.document.write(tncHTML);
-    win.document.close();
+    // Send via backend email
+    acceptBtn.disabled = true;
+    acceptBtn.textContent = 'Sending…';
+    try {
+      const fd = new FormData();
+      fd.append('html_body', tncHTML);
+      const resp = await fetch('/api/send-tnc-email', { method: 'POST', body: fd });
+      const data = await resp.json();
+      if (!resp.ok) {
+        alert('Failed to send T&C email: ' + (data.detail || 'Unknown error'));
+        acceptBtn.disabled = false;
+        acceptBtn.textContent = '✓ I Accept';
+        return;
+      }
+      alert('T&C acceptance emailed successfully.');
+    } catch (err) {
+      alert('Network error sending T&C email: ' + err.message);
+      acceptBtn.disabled = false;
+      acceptBtn.textContent = '✓ I Accept';
+      return;
+    }
 
     // Mark as accepted for this session
     sessionStorage.setItem(sessionKey, '1');

@@ -1,17 +1,17 @@
 """
-main.py — FastAPI application for the Y-Strainer Pressure Drop Calculator.
+main.py -- FastAPI application for the Y-Strainer Pressure Drop Calculator.
 
 Web routes
-──────────
-GET  /           → calculator UI (requires login)
-GET  /login      → login page
-POST /login      → authenticate
-GET  /signup     → registration page
-POST /signup     → create account
-GET  /logout     → clear session
+----------
+GET  /           -> calculator UI (requires login)
+GET  /login      -> login page
+POST /login      -> authenticate
+GET  /signup     -> registration page
+POST /signup     -> create account
+GET  /logout     -> clear session
 
 API endpoints
-─────────────
+-------------
 POST /calculate
 POST /calculate/from-selection
 GET  /lookup/meshes
@@ -26,6 +26,9 @@ import os
 import secrets
 from pathlib import Path
 from contextlib import asynccontextmanager
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent / ".env")
@@ -51,14 +54,14 @@ from calculator import calculate
 from config import MESH_DATA, PERF_SHEET_DATA, STRAINER_DATA, PIPE_NPS_DATA, PR_CLASS_DATA, PIPE_SCHEDULE_DATA
 from database import init_db, create_user, get_user_by_username, verify_password
 
-# ── Session secret ────────────────────────────────────────────────────────────
+# -- Session secret ------------------------------------------------------------
 # Production (Railway): set SESSION_SECRET_KEY env var in Railway dashboard.
 # Local dev: falls back to a file-persisted secret so sessions survive restarts.
 _SECRET_FILE = Path(__file__).parent / ".session_secret"
 
 
 def _get_session_secret() -> str:
-    # 1. Prefer explicit env var (required on Railway — filesystem is ephemeral)
+    # 1. Prefer explicit env var (required on Railway -- filesystem is ephemeral)
     env_key = os.environ.get("SESSION_SECRET_KEY", "").strip()
     if env_key:
         return env_key
@@ -73,7 +76,7 @@ def _get_session_secret() -> str:
     return key
 
 
-# ── Lifespan ───────────────────────────────────────────────────────────────────
+# -- Lifespan -------------------------------------------------------------------
 @asynccontextmanager
 async def _lifespan(application: FastAPI):
     init_db()
@@ -88,7 +91,7 @@ async def _lifespan(application: FastAPI):
     yield
 
 
-# ── App setup ──────────────────────────────────────────────────────────────────
+# -- App setup ------------------------------------------------------------------
 app = FastAPI(
     title="Y-Strainer Pressure Drop Calculator",
     description=(
@@ -107,12 +110,12 @@ app.mount("/static", StaticFiles(directory=str(_BASE / "static")), name="static"
 templates = Jinja2Templates(directory=str(_BASE / "templates"))
 
 
-# ── Auth helpers ───────────────────────────────────────────────────────────────
+# -- Auth helpers ---------------------------------------------------------------
 def _current_user(request: Request) -> str | None:
     return request.session.get("username")
 
 
-# ── Web routes ─────────────────────────────────────────────────────────────────
+# -- Web routes -----------------------------------------------------------------
 
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
 def home(request: Request):
@@ -136,7 +139,7 @@ def login_post(
     username: str = Form(...),
     password: str = Form(...),
 ):
-    # Static credential check — set STATIC_USERNAME / STATIC_PASSWORD in Railway
+    # Static credential check -- set STATIC_USERNAME / STATIC_PASSWORD in Railway
     # env vars for instant access without needing the database.
     _static_user = os.environ.get("STATIC_USERNAME", "").strip()
     _static_pass = os.environ.get("STATIC_PASSWORD", "").strip()
@@ -159,7 +162,7 @@ def login_post(
 @app.get("/signup", include_in_schema=False)
 @app.post("/signup", include_in_schema=False)
 def signup_disabled(request: Request):
-    """Registration is closed — accounts are created by the administrator only."""
+    """Registration is closed -- accounts are created by the administrator only."""
     from fastapi import HTTPException
     raise HTTPException(status_code=404, detail="Page not found")
 
@@ -170,12 +173,50 @@ def logout(request: Request):
     return RedirectResponse("/login", status_code=302)
 
 
-# ── Primary calculation endpoint ───────────────────────────────────────────────
+# -- T&C acceptance email -------------------------------------------------------
+
+@app.post("/api/send-tnc-email", include_in_schema=False)
+def send_tnc_email(request: Request, html_body: str = Form(...)):
+    """Email the signed T&C acceptance HTML to the configured recipient."""
+    user = _current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    recipient = os.environ.get("TNC_RECIPIENT_EMAIL", "").strip()
+    smtp_host = os.environ.get("SMTP_HOST", "smtp.gmail.com").strip()
+    smtp_port = int(os.environ.get("SMTP_PORT", "587"))
+    smtp_user = os.environ.get("SMTP_USERNAME", "").strip()
+    smtp_pass = os.environ.get("SMTP_PASSWORD", "").strip()
+
+    if not recipient or not smtp_user or not smtp_pass:
+        raise HTTPException(
+            status_code=500,
+            detail="Email not configured. Set TNC_RECIPIENT_EMAIL, SMTP_USERNAME, and SMTP_PASSWORD in .env",
+        )
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = f"T&C Acceptance - {user}"
+    msg["From"] = smtp_user
+    msg["To"] = recipient
+    msg.attach(MIMEText(html_body, "html"))
+
+    try:
+        with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
+            server.starttls()
+            server.login(smtp_user, smtp_pass)
+            server.sendmail(smtp_user, [recipient], msg.as_string())
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to send email: {exc}")
+
+    return {"status": "ok", "message": f"T&C acceptance emailed to {recipient}"}
+
+
+# -- Primary calculation endpoint -----------------------------------------------
 
 @app.post(
     "/calculate",
     response_model=CalculationResponse,
-    summary="Calculate pressure drop — direct inputs",
+    summary="Calculate pressure drop -- direct inputs",
     tags=["calculation"],
 )
 def calculate_direct(req: CalculationRequest) -> CalculationResponse:
@@ -197,24 +238,24 @@ def calculate_direct(req: CalculationRequest) -> CalculationResponse:
     return CalculationResponse(tag_no=req.tag_no, fluid_name=req.fluid_name, **result)
 
 
-# ── Lookup-based calculation endpoint ─────────────────────────────────────────
+# -- Lookup-based calculation endpoint -----------------------------------------
 
 @app.post(
     "/calculate/from-selection",
     response_model=CalculationResponse,
-    summary="Calculate pressure drop — model / mesh / perf selection",
+    summary="Calculate pressure drop -- model / mesh / perf selection",
     tags=["calculation"],
 )
 def calculate_from_selection(req: LookupRequest) -> CalculationResponse:
     """Resolve geometry from the reference tables, then run the calculation.
 
-    - model + nps  →  D_pipe_cm, D_screen_cm, L_cm   (Strainer data sheet)
-    - mesh + swg   →  D_open_cm, Q_pct               (Mesh Data sheet)
-    - perforation  →  P_pct                           (Perf Sheet sheet)
+    - model + nps  ->  D_pipe_cm, D_screen_cm, L_cm   (Strainer data sheet)
+    - mesh + swg   ->  D_open_cm, Q_pct               (Mesh Data sheet)
+    - perforation  ->  P_pct                           (Perf Sheet sheet)
 
     No-Mesh case: set mesh=0 and provide D_open_cm_override.
     """
-    # ── Strainer geometry ──────────────────────────────────────────────────────
+    # -- Strainer geometry ------------------------------------------------------
     strainer_key = (req.model.strip().upper(), req.nps.strip())
     if strainer_key not in STRAINER_DATA:
         raise HTTPException(
@@ -227,7 +268,7 @@ def calculate_from_selection(req: LookupRequest) -> CalculationResponse:
     D_screen_cm = screen_D_mm / 10.0
     L_cm = screen_L_mm / 10.0
 
-    # ── Mesh / opening data ────────────────────────────────────────────────────
+    # -- Mesh / opening data ----------------------------------------------------
     if req.mesh == 0:
         # No-Mesh case: full open area, caller must supply effective opening width
         Q_pct = 100.0
@@ -242,13 +283,13 @@ def calculate_from_selection(req: LookupRequest) -> CalculationResponse:
         if mesh_key not in MESH_DATA:
             raise HTTPException(
                 status_code=404,
-                detail=f"Mesh {req.mesh} × SWG {req.swg} not found."
+                detail=f"Mesh {req.mesh} x SWG {req.swg} not found."
                        " Use GET /lookup/meshes to see available options.",
             )
         opening_mm, Q_pct = MESH_DATA[mesh_key]
         D_open_cm = opening_mm / 10.0
 
-    # ── Perforation data ───────────────────────────────────────────────────────
+    # -- Perforation data -------------------------------------------------------
     perf_key = req.perforation.strip().upper()
     if perf_key not in PERF_SHEET_DATA:
         raise HTTPException(
@@ -258,7 +299,7 @@ def calculate_from_selection(req: LookupRequest) -> CalculationResponse:
         )
     P_pct = PERF_SHEET_DATA[perf_key]
 
-    # ── Run calculation ────────────────────────────────────────────────────────
+    # -- Run calculation --------------------------------------------------------
     result = calculate(
         rho=req.rho,
         mu_cP=req.mu_cP,
@@ -274,7 +315,7 @@ def calculate_from_selection(req: LookupRequest) -> CalculationResponse:
     return CalculationResponse(tag_no=req.tag_no, fluid_name=req.fluid_name, **result)
 
 
-# ── Lookup list endpoints ──────────────────────────────────────────────────────
+# -- Lookup list endpoints ------------------------------------------------------
 
 @app.get(
     "/lookup/meshes",
